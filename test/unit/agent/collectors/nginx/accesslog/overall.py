@@ -299,3 +299,50 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         # check some values
         counter = metrics['counter']
         assert_that(counter['C|nginx.http.status.2xx'][0][1], equal_to(7))
+
+    def test_cache_states(self):
+        log_format = '$remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
+
+        lines = [
+            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' +
+            '"http://www.yandex.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.001, 0.345" cs=MISS',
+
+            '1.2.3.4 - - [22/Jan/2010:20:34:21 +0300] "GET /foo/ HTTP/1.1" 300 1078 ' +
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.002" cs=HIT',
+
+            '1.2.3.4 - - [22/Jan/2010:20:34:21 +0300] "GET /foo/ HTTP/1.1" 400 1078 ' +
+            '"http://www.mail.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.002" cs=BLAHBLAHFOO',
+
+        ]
+
+        collector = NginxAccessLogsCollector(object=self.fake_object, log_format=log_format, tail=lines)
+        collector.collect()
+
+        # check
+        metrics = self.fake_object.statsd.flush()['metrics']
+        assert_that(metrics, has_item('counter'))
+        assert_that(metrics, has_item('timer'))
+
+        # counter keys
+        counter = metrics['counter']
+        for key in ['C|nginx.http.method.get', 'C|nginx.http.v1_1', 'C|nginx.upstream.next.count',
+                    'C|nginx.upstream.request.count', 'C|nginx.http.status.3xx', 'C|nginx.cache.miss',
+                    'C|nginx.http.status.2xx', 'C|nginx.http.request.body_bytes_sent', 'C|nginx.cache.hit']:
+            assert_that(counter, has_key(key))
+
+        # timer keys
+        timer = metrics['timer']
+        for key in ['G|nginx.upstream.response.time.pctl95', 'C|nginx.upstream.response.time.count',
+                    'C|nginx.http.request.time.count', 'G|nginx.http.request.time',
+                    'G|nginx.http.request.time.pctl95', 'G|nginx.http.request.time.median',
+                    'G|nginx.http.request.time.max', 'G|nginx.upstream.response.time',
+                    'G|nginx.upstream.response.time.median', 'G|nginx.upstream.response.time.max']:
+            assert_that(timer, has_key(key))
+
+        # values
+        assert_that(counter['C|nginx.http.method.get'][0][1], equal_to(3))
+        assert_that(counter['C|nginx.upstream.request.count'][0][1], equal_to(3))
+        assert_that(counter['C|nginx.cache.miss'][0][1], equal_to(1))
+        assert_that(counter['C|nginx.cache.hit'][0][1], equal_to(1))

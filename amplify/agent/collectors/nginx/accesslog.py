@@ -63,6 +63,16 @@ class NginxAccessLogsCollector(AbstractCollector):
         'options'
     )
 
+    valid_cache_statuses = (
+        'bypass',
+        'expired',
+        'hit',
+        'miss',
+        'revalidated',
+        'stale',
+        'updating',
+    )
+
     def __init__(self, filename=None, log_format=None, tail=None, **kwargs):
         super(NginxAccessLogsCollector, self).__init__(**kwargs)
         self.filename = filename
@@ -90,7 +100,7 @@ class NginxAccessLogsCollector(AbstractCollector):
             self.upstreams,
         )
 
-    def init_counters(self):
+    def init_counters(self, counters=None):
         for counter, key in self.counters.iteritems():
             # If keys are in the parser format (access log) or not defined (error log)
             if key in self.parser.keys or key is None:
@@ -361,8 +371,9 @@ class NginxAccessLogsCollector(AbstractCollector):
         # cache
         if 'upstream_cache_status' in data:
             cache_status = data['upstream_cache_status']
-            if cache_status != '-':
-                metric_name = 'nginx.cache.%s' % cache_status.lower()
+            cache_status_lower = cache_status.lower()
+            if cache_status_lower in self.valid_cache_statuses:
+                metric_name = 'nginx.cache.%s' % cache_status_lower
                 self.object.statsd.incr(metric_name)
                 if matched_filters:
                     self.count_custom_filter(matched_filters, metric_name, 1, self.object.statsd.incr)
