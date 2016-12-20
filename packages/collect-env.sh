@@ -16,7 +16,7 @@ cat <<-EOM >&2
 	# the OS, the nginx, and the Amplify Agent environments.
 	#
 	# It is intended to be used only while DEBUGGING a failed installation,
-	# or while examining obscure problems with the metric collection.
+	# or while examining any obscure problems with the metric collection.
 	#
 	# This script is NOT part of the Amplify Agent runtime.
 	# It DOES NOT send anything anywhere on its own.
@@ -98,9 +98,12 @@ if [ -n "${nginx_master}" ]; then
 	    if [ "${nginx_ppid}" -ne 1 ]; then
 	        echo "  ---> nginx master process ppid ${nginx_ppid} != 1 (a Docker container?)"
 	        echo ""
-	        echo "   ---> ps o pid,ppid,user,command ${nginx_ppid}:"
-	        ps o pid,ppid,user,command ${nginx_ppid} 2>&1
-	        echo ""
+
+			if [ "${nginx_ppid}" -ne 0 ]; then
+			    echo "   ---> ps o pid,ppid,user,command ${nginx_ppid}:"
+	            ps o pid,ppid,user,command ${nginx_ppid} 2>&1
+	            echo ""
+			fi
 	    fi
 
 	    if [ -n "${nginx_conf_option}" ]; then
