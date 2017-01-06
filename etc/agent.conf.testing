@@ -12,17 +12,17 @@ imagename =
 #exclude_logs =
 
 [proxies]
-https =
+https = 
 
 [cloud]
-api_url =
-api_timeout =
+api_url = 
+api_timeout = 
 
 [listeners]
 keys = syslog-default
 
 [listener_syslog-default]
-address =
+address = 
 
 [loggers]
 keys = root,devnull,test-default

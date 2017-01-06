@@ -25,3 +25,10 @@ Ubuntu1404:
    - ../:/amplify
   external_links:
    - docker_receiver_1:receiver
+
+Gentoo:
+  image: amplify-agent-gentoo
+  volumes:
+   - ../:/amplify
+  external_links:
+   - docker_receiver_1:receiver

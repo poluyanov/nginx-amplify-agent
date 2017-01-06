@@ -59,6 +59,7 @@ class NginxMetricsCollector(AbstractMetricsCollector):
                 'failed to collect metrics %s due to %s, object restart needed (PID: %s)' %
                 (method.__name__, exception.__class__.__name__, exception.pid)
             )
+            # since the PID no longer exists, mark the object as needing restart for safety
             self.object.need_restart = True
         else:
             # Fire event warning.
@@ -340,11 +341,19 @@ class NginxMetricsCollector(AbstractMetricsCollector):
             self.previous_counters[metric_name] = (current_stamp, value)
 
 
+class GenericLinuxNginxMetricsCollector(NginxMetricsCollector):
+    pass
+
+
 class DebianNginxMetricsCollector(NginxMetricsCollector):
     pass
 
 
 class CentosNginxMetricsCollector(NginxMetricsCollector):
+    pass
+
+
+class GentooNginxMetricsCollector(NginxMetricsCollector):
     pass
 
 

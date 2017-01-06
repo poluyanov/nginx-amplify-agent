@@ -32,15 +32,24 @@ def nginx_v(bin_path):
     for line in nginx_v_err:
         # SSL stuff
         if line.lower().startswith('built with') and 'ssl' in line.lower():
-            lib_name, lib_version = line.split()[2:4]
-            result['ssl']['built'] = [lib_name, lib_version]
-            result['ssl']['run'] = [lib_name, lib_version]
+            lib_name, lib_version, lib_day, lib_month, lib_year = line.split()[2:7]
+            lib_date = ' '.join((lib_day, lib_month, lib_year))
+            result['ssl']['built'] = [lib_name, lib_version, lib_date]
+
+            # example: "built with OpenSSL 1.0.2g-fips 1 Mar 2016 (running with OpenSSL 1.0.2g 1 Mar 2016)"
+            if '(running with' in line.lower() and ')' in line.lower():
+                parenthetical = line.split('(', 1)[1].rsplit(')', 1)[0]
+                lib_name, lib_version, lib_day, lib_month, lib_year = parenthetical.split()[2:7]
+                lib_date = ' '.join((lib_day, lib_month, lib_year))
+
+            result['ssl']['run'] = [lib_name, lib_version, lib_date]
 
         elif line.lower().startswith('run with') and 'ssl' in line.lower():
-            lib_name, lib_version = line.split()[2:4]
-            result['ssl']['run'] = [lib_name, lib_version]
+            lib_name, lib_version, lib_day, lib_month, lib_year = line.split()[2:7]
+            lib_date = ' '.join((lib_day, lib_month, lib_year))
+            result['ssl']['run'] = [lib_name, lib_version, lib_date]
 
-        parts = line.split(':')
+        parts = line.split(':', 1)
         if len(parts) < 2:
             continue
 
@@ -59,7 +68,7 @@ def nginx_v(bin_path):
                     result['plus']['release'] = plus_parsed.group(1)
 
         # parse configure
-        if key == 'configure arguments':
+        elif key == 'configure arguments':
             arguments = _parse_arguments(value)
             result['configure'] = arguments
 

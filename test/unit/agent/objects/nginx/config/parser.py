@@ -31,6 +31,8 @@ sub_filter_config = os.getcwd() + '/test/fixtures/nginx/custom/sub_filter.conf'
 proxy_pass_config = os.getcwd() + '/test/fixtures/nginx/custom/proxy_pass.conf'
 quoted_location_with_semicolon = os.getcwd() + '/test/fixtures/nginx/quoted_location_with_semicolon/nginx.conf'
 complex_add_header = os.getcwd() + '/test/fixtures/nginx/complex_add_header/nginx.conf'
+escaped_string_config = os.getcwd() + '/test/fixtures/nginx/custom/escaped_string.conf'
+tabs_everywhere = os.getcwd() + '/test/fixtures/nginx/tabs/nginx.conf'
 
 
 class ParserTestCase(BaseTestCase):
@@ -367,7 +369,11 @@ class ParserTestCase(BaseTestCase):
 
         assert_that(
             tree['http']['sub_filter'],
-            equal_to(
+            contains(
+                'foobar',
+                "'https://foo.example.com/1''https://bar.example.com/1'",
+                '"https://foo.example.com/2""https://bar.example.com/2"',
+                '"https://foo.example.com/3"\'https://bar.example.com/3\'',
                 '\'</body>\'\'<p style="position: fixed;top:\n            60px;width:100%;;background-color: #f00;background-color:\n            rgba(255,0,0,0.5);color: #000;text-align: center;font-weight:\n            bold;padding: 0.5em;z-index: 1;">Test</p></body>\''
             )
         )
@@ -386,6 +392,26 @@ class ParserTestCase(BaseTestCase):
     def test_complex_add_header(self):
         """Test complex definitions for add_header are parsed correctly"""
         cfg = NginxConfigParser(complex_add_header)
+        cfg.parse()
+
+        assert_that(cfg.errors, has_length(0))
+
+    def test_escaped_string(self):
+        cfg = NginxConfigParser(escaped_string_config)
+        cfg.parse()
+
+        assert_that(cfg.errors, empty())
+
+        tree = cfg.simplify()
+        add_header = tree['http']['server'][0]['add_header']
+
+        assert_that(add_header, contains(
+            r'LinkOne "<https://$http_host$request_uri>; rel=\"foo\""',
+            r"LinkTwo '<https://$http_host$request_uri>; rel=\'bar\''"
+        ))
+
+    def test_tabs_everywhere(self):
+        cfg = NginxConfigParser(tabs_everywhere)
         cfg.parse()
 
         assert_that(cfg.errors, has_length(0))

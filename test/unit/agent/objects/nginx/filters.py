@@ -20,24 +20,33 @@ class FiltersTestCase(BaseTestCase):
             filter_rule_id='1',
             metric='http.something',
             data=[
-                {'logname': 'foo.txt'},
-                {'$request_method': 'post'},
-                {'$request_uri': '.*\.gif'}
+                ['logname', '~', 'foo.txt'],
+                ['$request_method', '~', 'post'],
+                ['$request_uri', '~', '.*\.gif'],
+                ['$status', '!~', '200']
             ]
         )
         assert_that(filtr.filter_rule_id, equal_to('1'))
         assert_that(filtr.metric, equal_to('http.something'))
         assert_that(filtr.filename, equal_to('foo.txt'))
+
+        assert_that('logname', not_(is_in(filtr.data)))
         assert_that(filtr.data['request_method'], equal_to(re.compile("POST")))
         assert_that(filtr.data['request_uri'], equal_to(re.compile(".*\.gif")))
+        assert_that(filtr.data['status'], equal_to(re.compile("200")))
+
+        assert_that('logname', not_(is_in(filtr._negated_conditions)))
+        assert_that(filtr._negated_conditions['request_method'], equal_to(False))
+        assert_that(filtr._negated_conditions['request_uri'], equal_to(False))
+        assert_that(filtr._negated_conditions['status'], equal_to(True))
 
     def test_init_without_filename(self):
         filtr = Filter(
             filter_rule_id='1',
             metric='http.something',
             data=[
-                {'$request_method': 'post'},
-                {'$request_uri': '*.gif'}
+                ['$request_method', '~', 'post'],
+                ['$request_uri', '~', '*.gif']
             ]
         )
         assert_that(filtr.filename, equal_to(None))

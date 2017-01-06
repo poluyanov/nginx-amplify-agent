@@ -71,6 +71,14 @@ class ConfigCollectorTestCase(RealNginxTestCase):
         cfg_collector.collect(no_delay=True)
         assert_that(NginxConfig.__full_parse_calls, equal_to(2))
 
+        # change the collector's previous directories record and check that it does not call full_parse
+        cfg_collector.previous['directories'] = {}
+        cfg_collector.collect(no_delay=True)
+        assert_that(NginxConfig.__full_parse_calls, equal_to(2))
+        cfg_collector.collect(no_delay=True)
+        cfg_collector.collect(no_delay=True)
+        assert_that(NginxConfig.__full_parse_calls, equal_to(2))
+
     def test_test_run_time(self):
         container = NginxManager()
         container._discover_objects()

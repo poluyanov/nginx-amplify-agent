@@ -210,6 +210,9 @@ class SystemMetricsCollector(AbstractMetricsCollector):
         for interface in host.alive_interfaces():
             io = net_io_counters.get(interface)
 
+            if not io:
+                continue
+
             for method, metric in metrics.iteritems():
                 new_stamp, new_value = time.time(), getattr(io, method)
                 prev_stamp, prev_value = self.previous_counters.get(interface, {}).get(metric, (None, None))
@@ -253,6 +256,14 @@ class SystemMetricsCollector(AbstractMetricsCollector):
             self.object.statsd.incr('system.net.listen_overflows', delta_value)
 
         self.previous_counters['system.net.listen_overflows'] = (new_stamp, new_value)
+
+
+class GenericLinuxSystemMetricsCollector(SystemMetricsCollector):
+    pass
+
+
+class GentooSystemMetricsCollector(SystemMetricsCollector):
+    pass
 
 
 class DebianSystemMetricsCollector(SystemMetricsCollector):

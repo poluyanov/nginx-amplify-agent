@@ -175,12 +175,16 @@ class NginxAccessLogsCollector(AbstractCollector):
         :param matched_filters: [] of matched filters
         """
         if 'status' in data:
-            status = data['status']
-            suffix = 'discarded' if status in ('499', '444', '408') else '%sxx' % status[0]
-            metric_name = 'nginx.http.status.%s' % suffix
+            metric_name = 'nginx.http.status.%sxx' % data['status'][0]
             self.object.statsd.incr(metric_name)
             if matched_filters:
                 self.count_custom_filter(matched_filters, metric_name, 1, self.object.statsd.incr)
+
+            if data['status'] == '499':
+                metric_name = 'nginx.http.status.discarded'
+                self.object.statsd.incr(metric_name)
+                if matched_filters:
+                    self.count_custom_filter(matched_filters, metric_name, 1, self.object.statsd.incr)
 
     def http_version(self, data, matched_filters=None):
         """

@@ -10,9 +10,8 @@ __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
 
 
-def import_class(klass):
-    module_name = '.'.join(klass.split('.')[:-1])
-    class_name = klass.split('.')[-1:].pop()
+def import_class(qualname):
+    module_name, class_name = qualname.rsplit('.', 1)
     module = import_module(module_name)
     return getattr(module, class_name)
 

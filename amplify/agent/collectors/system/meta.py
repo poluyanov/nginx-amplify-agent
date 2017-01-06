@@ -171,6 +171,10 @@ class SystemMetaCollector(AbstractMetaCollector):
         self.meta['network']['default'] = default_interface
 
 
+class GenericLinuxSystemMetaCollector(SystemMetaCollector):
+    pass
+
+
 class DebianSystemMetaCollector(SystemMetaCollector):
     pass
 
@@ -193,6 +197,10 @@ class CentosSystemMetaCollector(SystemMetaCollector):
                     self.meta['release']['name'] = r.group(1)
                     self.meta['release']['version_id'] = r.group(3)
                     self.meta['release']['version'] = '%s %s' % (r.group(3), r.group(4))
+
+
+class GentooSystemMetaCollector(SystemMetaCollector):
+    pass
 
 
 class FreebsdSystemMetaCollector(SystemMetaCollector):

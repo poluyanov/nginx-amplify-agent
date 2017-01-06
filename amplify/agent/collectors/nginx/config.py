@@ -53,8 +53,9 @@ class NginxConfigCollector(AbstractCollector):
 
         files, directories = config.collect_structure(include_ssl_certs=self.object.upload_ssl)
 
-        # check if config is changed (changes are: new files/certs, new mtimes)
-        if files == self.previous['files'] and directories == self.previous['directories']:
+        # check if config is changed...only check files here because checking directories as well has too many false
+        # positives
+        if files == self.previous['files']:
             return
 
         self.previous['files'] = files

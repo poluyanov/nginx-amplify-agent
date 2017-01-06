@@ -3,8 +3,9 @@ import os
 
 from hamcrest import *
 
-from test.base import WithConfigTestCase
+from test.base import WithConfigTestCase, disabled_test
 from test.unit.agent.common.config.app import TestingConfig
+
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
@@ -16,6 +17,7 @@ __email__ = "dedm@nginx.com"
 
 class AbstractConfigTestCase(WithConfigTestCase):
 
+    @disabled_test  # disabled because it keeps altering our etc/agent.conf.testing file
     def test_change_var_and_save(self):
         """
         Test that configreader saves new config if it doesn't exist

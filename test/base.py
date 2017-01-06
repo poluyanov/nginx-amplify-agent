@@ -151,6 +151,23 @@ class RealNginxTestCase(BaseTestCase):
         subp.call('service nginx restart')
 
 
+class TestWithFakeSubpCall(BaseTestCase):
+    """
+    Special class for testing functions whose output is dependent on subp.call
+    This allows us to push the desired result of the next supb.call, that's returned when subp is called
+    After the pushed results are all popped, subp.call will actually spin up a subprocess like usual
+    """
+    def push_subp_result(self, stdout_lines, stderr_lines):
+        from amplify.agent.common.util import subp
+        original_call = subp.call
+
+        def fake_call(command, check=True):
+            subp.call = original_call
+            return stdout_lines, stderr_lines
+
+        subp.call = fake_call
+
+
 def nginx_plus_installed():
     out, err = subp.call('/usr/sbin/nginx -V')
     first_line = err[0]

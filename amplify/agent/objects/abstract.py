@@ -147,10 +147,15 @@ class AbstractObject(object):
             'sles': 'centos'
         }.get(distribution, distribution)
 
-        class_name = distribution.title() + type.title() + target.title() + 'Collector'
-        class_path = 'amplify.agent.collectors.%s.%s.%s' % (type.lower(), target.lower(), class_name)
+        try:
+            class_name = distribution.title() + type.title() + target.title() + 'Collector'
+            class_path = 'amplify.agent.collectors.%s.%s.%s' % (type.lower(), target.lower(), class_name)
+            cls = loader.import_class(class_path)
+        except AttributeError:
+            class_name = 'GenericLinux' + type.title() + target.title() + 'Collector'
+            class_path = 'amplify.agent.collectors.%s.%s.%s' % (type.lower(), target.lower(), class_name)
+            cls = loader.import_class(class_path)
 
-        cls = loader.import_class(class_path)
         return cls
 
     def flush(self, clients=None):

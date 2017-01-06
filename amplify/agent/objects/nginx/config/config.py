@@ -85,6 +85,9 @@ class NginxConfig(object):
         # Go through log files and apply exclude rules (log files are added during .__colect_data()
         self._exclude_logs()
 
+        # try to read from each log file to check if it can be parsed
+        self._check_logs()
+
     def _handle_parse(self):
         self.tree = self.parser.tree
         self.files = self.parser.files
@@ -113,7 +116,7 @@ class NginxConfig(object):
         Returns the total size of a config tree
         :return: int size in bytes
         """
-        return sum(file_data['size'] for file_data in self.files.itervalues())
+        return sum(data['size'] for data in self.files.itervalues())
 
     def __collect_data(self, subtree=None, ctx=None):
         """
@@ -143,7 +146,8 @@ class NginxConfig(object):
                         log_name = '%s/%s' % (self.prefix, log_name)
 
                     if log_name not in self.error_logs:
-                        self.error_logs[log_name] = log_level
+                        self.error_logs[log_name] = {'log_level': log_level}
+
             elif key == 'access_log':
                 access_logs = value if isinstance(value, list) else [value]
                 for ac_log_definition in access_logs:
@@ -159,22 +163,21 @@ class NginxConfig(object):
                     if not log_name.startswith('syslog') and not log_name.startswith('/'):
                         log_name = '%s/%s' % (self.prefix, log_name)
 
-                    self.access_logs[log_name] = log_format
+                    self.access_logs[log_name] = {'log_format': log_format}
+
             elif key == 'log_format':
                 for k, v in value.iteritems():
                     self.log_formats[k] = v
+
             elif key == 'server' and isinstance(value, list) and 'upstream' not in ctx:
                 for server in value:
-
-                    current_ctx = copy.copy(ctx)
-                    if server.get('listen') is None:
-                        # if no listens specified, then use default *:80 and *:8000
+                    listen = server.get('listen')
+                    if listen is None:
                         listen = ['80', '8000']
-                    else:
-                        listen = server.get('listen')
-                    listen = listen if isinstance(listen, list) else [listen]
+                    elif not isinstance(listen, list):
+                        listen = [listen]
 
-                    ctx['ip_port'] = []
+                    ip_port = []
                     for item in listen:
                         listen_first_part = item.split(' ')[0]
                         try:
@@ -183,32 +186,32 @@ class NginxConfig(object):
                                 addr = '127.0.0.1'
                             elif addr == '[::]':
                                 addr = '[::1]'
-                            ctx['ip_port'].append((addr, port))
-                        except Exception as e:
+                            ip_port.append((addr, port))
+                        except:
                             context.log.error('failed to parse bad ipv6 listen directive: %s' % listen_first_part)
                             context.log.debug('additional info:', exc_info=True)
 
+                    server_ctx = dict(ctx, ip_port=ip_port)
                     if 'server_name' in server:
-                        ctx['server_name'] = server.get('server_name')
+                        server_ctx['server_name'] = server.get('server_name')
 
-                    self.__collect_data(subtree=server, ctx=ctx)
-                    ctx = current_ctx
+                    self.__collect_data(subtree=server, ctx=server_ctx)
+
             elif key == 'upstream':
                 for upstream, upstream_info in value.iteritems():
-                    current_ctx = copy.copy(ctx)
-                    ctx['upstream'] = upstream
-                    self.__collect_data(subtree=upstream_info, ctx=ctx)
-                    ctx = current_ctx
+                    upstream_ctx = dict(ctx, upstream=upstream)
+                    self.__collect_data(subtree=upstream_info, ctx=upstream_ctx)
+
             elif key == 'location':
                 for location, location_info in value.iteritems():
-                    current_ctx = copy.copy(ctx)
-                    ctx['location'] = location
-                    self.__collect_data(subtree=location_info, ctx=ctx)
-                    ctx = current_ctx
+                    location_ctx = dict(ctx, location=location)
+                    self.__collect_data(subtree=location_info, ctx=location_ctx)
+
             elif key == 'stub_status' and ctx and 'ip_port' in ctx:
                 for url in self.__status_url(ctx):
                     if url not in self.stub_status_urls:
                         self.stub_status_urls.append(url)
+
             elif key == 'status' and ctx and 'ip_port' in ctx:
                 # use different url builders for external and internal urls
                 for url in self.__status_url(ctx, server_preferred=True):
@@ -220,8 +223,10 @@ class NginxConfig(object):
                 for url in self.__status_url(ctx, server_preferred=False):
                     if url not in self.plus_status_internal_urls:
                         self.plus_status_internal_urls.append(url)
+
             elif isinstance(value, dict):
                 self.__collect_data(subtree=value, ctx=ctx)
+
             elif isinstance(value, list):
                 for next_subtree in value:
                     if isinstance(next_subtree, dict):
@@ -354,11 +359,11 @@ class NginxConfig(object):
         """
         access_log_path = '%s/logs/access.log' % self.prefix
         if os.path.isfile(access_log_path) and access_log_path not in self.access_logs:
-            self.access_logs[access_log_path] = None
+            self.access_logs[access_log_path] = {'log_format': None}
 
         error_log_path = '%s/logs/error.log' % self.prefix
         if os.path.isfile(error_log_path) and error_log_path not in self.error_logs:
-            self.error_logs[error_log_path] = 'error'
+            self.error_logs[error_log_path] = {'log_error': 'error'}
 
     def run_ssl_analysis(self):
         """
@@ -396,3 +401,21 @@ class NginxConfig(object):
             # error logs
             for excluded_file in glib(self.error_logs.keys(), rule):
                 del self.error_logs[excluded_file]
+
+    def _check_logs(self):
+        """
+        Iterate through log file stores and add permissions and if it is readable to the log data
+        """
+        for logs in (self.access_logs, self.error_logs):
+            for log_name in logs:
+
+                __, __, permissions = NginxConfigParser.get_filesystem_info(log_name)
+                logs[log_name]['permissions'] = permissions
+
+                try:
+                    with open(log_name, 'r'):
+                        pass
+                except:
+                    logs[log_name]['readable'] = False
+                else:
+                    logs[log_name]['readable'] = True

@@ -67,19 +67,10 @@ class NginxConfigParser(object):
 
     max_size = 20*1024*1024  # 20 mb
 
-    # line starts/ends
-    line_start = LineStart().suppress()
-    line_end = LineEnd().suppress()
-
     # constants
     left_brace = Literal("{").suppress()
-    left_parentheses = Literal("(").suppress()
     right_brace = Literal("}").suppress()
-    right_parentheses = Literal(")").suppress()
     semicolon = Literal(";").suppress()
-    # space = White().suppress()
-    singleQuote = Literal("'").suppress()
-    doubleQuote = Literal('"').suppress()
 
     # keywords
     IF, SET, REWRITE, PERL_SET, LOG_FORMAT, ALIAS, RETURN, ERROR_PAGE, MAP, SERVER_NAME, SUB_FILTER, ADD_HEADER = (
@@ -93,18 +84,21 @@ class NginxConfigParser(object):
         )
     )
 
-    # IF = Keyword('if').setParseAction(set_line_number)
-    # SET = Keyword('set').setParseAction(set_line_number)
-    # REWRITE = Keyword('rewrite').setParseAction(set_line_number)
-    # PERL_SET = Keyword('perl_set').setParseAction(set_line_number)
-    # LOG_FORMAT = Keyword('log_format').setParseAction(set_line_number)
-    # ALIAS = Keyword('alias').setParseAction(set_line_number)
-    # RETURN = Keyword('return').setParseAction(set_line_number)
-    # ERROR_PAGE = Keyword('error_page').setParseAction(set_line_number)
-    # MAP = Keyword('map').setParseAction(set_line_number)
-    # SERVER_NAME = Keyword('server_name').setParseAction(set_line_number)
-    # SUB_FILTER = Keyword('sub_filter').setParseAction(set_line_number)
-    # ADD_HEADER = Keyword('add_header').setParseAction(set_line_number)
+    # string helpers
+    string = (
+        QuotedString("'", escChar='\\') |
+        QuotedString('"', escChar='\\')
+    ).setParseAction(set_line_number)
+
+    multiline_string = (
+        QuotedString("'", escChar='\\', multiline=True) |
+        QuotedString('"', escChar='\\', multiline=True)
+    ).setParseAction(set_line_number)
+
+    multiline_string_keep_quotes = (
+        QuotedString("'", escChar='\\', multiline=True, unquoteResults=False) |
+        QuotedString('"', escChar='\\', multiline=True, unquoteResults=False)
+    ).setParseAction(set_line_number)
 
     # lua keys
     start_with_lua_key = Regex(r'lua_\S+').setParseAction(set_line_number)
@@ -119,47 +113,25 @@ class NginxConfigParser(object):
     #     Word(alphanums + '$_:%?"~<>\/-+.,*()[]"' + "'").setParseAction(set_line_number)
 
     # values
-    value_string = QuotedString('"')  # Regex(r'"([^"]|\s)*\"')  # string value repurposed from map types
     value_one = Regex(r'[^{};]*"[^\";]+"[^{};]*')
     value_two = Regex(r'[^{};]*\'[^\';]+\'')
     value_three = Regex(r'[^{};]+((\${[\d|\w]+(?=})})|[^{};])+')
     value_four = Regex(r'[^{};]+(?!${.+})')
-    value = (value_string | value_one | value_two | value_three | value_four).setParseAction(set_line_number)
-    quotedValue = Regex(r'"[^;]+"|\'[^;]+\'').setParseAction(set_line_number)
+    value = (string | value_one | value_two | value_three | value_four).setParseAction(set_line_number)
     rewrite_value = CharsNotIn(";").setParseAction(set_line_number)
     any_value = CharsNotIn(";").setParseAction(set_line_number)
     non_space_value = Regex(r'[^\'\";\s]+').setParseAction(set_line_number)
     if_value = nestedExpr().setParseAction(set_line_number)  # Regex(r'\(.*\)')
-    language_include_value = CharsNotIn("'").setParseAction(set_line_number)
     strict_value = CharsNotIn("{};").setParseAction(set_line_number)
-    sub_filter_value = (non_space_value | Regex(r"\'(.|\n)+?\'", )).setParseAction(set_line_number)
+    sub_filter_value = (non_space_value | multiline_string_keep_quotes).setParseAction(set_line_number)
     add_header_value = Regex(r'[^{};]*"[^"]+"').setParseAction(set_line_number)
-
-    # map values
-    map_value_one = QuotedString("'")  # Regex(r'\'([^\']|\s)*\'')
-    map_value_two = value_string
-    map_value_three = Regex(r'((\\\s|[^{};\s])*)')
-    map_value = (map_value_one | map_value_two | map_value_three).setParseAction(set_line_number)
+    map_value = (string | Regex(r'((\\\s|[^{};\s])*)')).setParseAction(set_line_number)
 
     # modifier for location uri [ = | ~ | ~* | ^~ ]
-    # ~ modifier = Literal("=") | Literal("~*") | Literal("~") | Literal("^~")
     modifier = oneOf("= ~* ~ ^~")
+
     assignment = (
         key + Optional(value + Optional(value)) + semicolon
-        #
-        # could also write as
-        # key + value*(0,2) + semicolon
-    ).setParseAction(set_line_number)
-
-    # String helpers
-    string = (QuotedString("'") | QuotedString('"')).setParseAction(set_line_number)
-    multi_line_string = (
-        QuotedString("'", multiline=True) |
-        QuotedString('"', multiline=True)
-    ).setParseAction(set_line_number)
-    multi_line_string_unquoted = (
-        QuotedString("'", multiline=True, unquoteResults=False) |
-        QuotedString('"', multiline=True, unquoteResults=False)
     ).setParseAction(set_line_number)
 
     set = (
@@ -171,17 +143,11 @@ class NginxConfigParser(object):
     ).setParseAction(set_line_number)
 
     perl_set = (
-        PERL_SET + key +
-        multi_line_string +
-        semicolon
-        # ~ singleQuote + language_include_value + singleQuote + semicolon
+        PERL_SET + key + multiline_string + semicolon
     ).setParseAction(set_line_number)
 
     lua_content = (
-        (start_with_lua_key | contains_by_lua_key) +
-        multi_line_string +
-        semicolon
-        # ~ singleQuote + language_include_value + singleQuote + semicolon
+        (start_with_lua_key | contains_by_lua_key) + multiline_string + semicolon
     ).setParseAction(set_line_number)
 
     alias = (
@@ -206,8 +172,8 @@ class NginxConfigParser(object):
 
     add_header = (
         ADD_HEADER + (non_space_value | string) +
-        Optional(multi_line_string_unquoted | add_header_value | non_space_value) +
-        Optional(non_space_value) +
+        Optional(multiline_string_keep_quotes | add_header_value | non_space_value) +
+        Optional(value) +
         semicolon
     ).setParseAction(set_line_number)
 
@@ -262,7 +228,7 @@ class NginxConfigParser(object):
         tokens_cache = {}
 
         self.filename = filename
-        self.folder = '/'.join(self.filename.split('/')[:-1])  # stores path to folder with main config
+        self.folder = os.path.dirname(self.filename)  # stores path to folder with main config
         self.files = {}  # to prevent cycle files and line indexing
         self.directories = {}
         self.parsed_cache = {}  # to cache multiple includes
@@ -318,15 +284,9 @@ class NginxConfigParser(object):
     @staticmethod
     def resolve_directory(path):
         """
-        Takes a path and parses out the containing directory path.
-
-        :param path: String Filepath (E.G. '/etc/conf/test.txt')
-        :return: String Directory path (E.G. '/etc/conf/')
+        Returns the dirname of a path.
         """
-        path_blocks = path.split('/')  # split address ['', 'etc', 'conf', 'test.txt']
-        path_blocks = path_blocks[:-1] + ['']  # trim filename and replace with empty string ['', 'etc', 'conf', '']
-        directory_path = '/'.join(path_blocks)  # '/etc/conf/'
-        return directory_path
+        return os.path.dirname(path) + os.path.sep
 
     def populate_directories(self, path):
         """
@@ -498,10 +458,6 @@ class NginxConfigParser(object):
                 if all_lines_commented:
                     continue
 
-                # replace \' with " because otherwise we cannot parse it
-                slash_quote = '\\' + "'"
-                source = source.replace(slash_quote, '"')
-
                 try:
                     parsed = list(self.script.parseString(source, parseAll=True))
                 except Exception as e:
@@ -580,7 +536,7 @@ class NginxConfigParser(object):
                             key_bucket += flatten(parse_results)
 
                         # remove all redundant spaces
-                        parts = filter(lambda x: x, ' '.join(key_bucket[1:]).split(' '))
+                        parts = filter(len, ' '.join(key_bucket[1:]).split(' '))
                         sub_key = ' '.join(parts)
 
                         subtree_indexed = self.__idx_save(
@@ -635,6 +591,8 @@ class NginxConfigParser(object):
                         included_files = self.__pyparse(value)
                         self.__logic_parse(included_files, result=result)
                     elif key in ('access_log', 'error_log'):
+                        value = value.replace('/s/', ' ')
+
                         # Handle access_log and error_log edge cases
                         if value == '':
                             continue  # skip log directives that are empty
@@ -703,63 +661,32 @@ class NginxConfigParser(object):
         else:
             result[key] = indexed_value
 
-    def simplify(self, tree=None):
+    def simplify(self):
         """
         returns tree without index references
         can be used for debug/pretty output
 
-        :param tree: - dict of tree
         :return: dict of self.tree without index positions
         """
-        result = {}
+        def _simplify(tree):
+            if isinstance(tree, dict):
+                return dict((k, _simplify(v)) for k, v in tree.iteritems())
+            elif isinstance(tree, list):
+                return map(_simplify, tree)
+            elif isinstance(tree, tuple):
+                return _simplify(tree[0])
+            return tree
 
-        if tree is None:
-            tree = self.tree
-
-        if isinstance(tree, dict):
-            for key, value in tree.iteritems():
-                if isinstance(value, dict):
-                    result[key] = self.simplify(tree=value)
-                elif isinstance(value, tuple):
-                    subtree, reference = value
-                    if isinstance(subtree, dict):
-                        result[key] = self.simplify(tree=subtree)
-                    elif isinstance(subtree, list):
-                        result[key] = map(lambda x: self.simplify(tree=x), subtree)
-                    else:
-                        result[key] = subtree
-                elif isinstance(value, list):
-                    result[key] = map(lambda x: self.simplify(tree=x), value)
-        elif isinstance(tree, tuple):
-            subtree, reference = tree
-            if isinstance(subtree, dict):
-                return self.simplify(tree=subtree)
-            elif isinstance(subtree, list):
-                return map(lambda x: self.simplify(tree=x), subtree)
-            else:
-                return subtree
-        elif isinstance(tree, list):
-            return map(lambda x: self.simplify(tree=x), tree)
-
-        return result
+        return _simplify(self.tree)
 
     def construct_directory_map(self):
         # start with directories
         for directory, info in self.directories.iteritems():
-            self.directory_map[directory] = {
-                'info': info,
-                'files': {}
-            }
+            self.directory_map[directory] = {'info': info, 'files': {}}
 
         for directory, error in izip(self.broken_directories, self.directory_errors):
-            if directory in self.directory_map:
-                self.directory_map[directory]['error'] = '%s: %s' % error
-            else:
-                self.directory_map[directory] = {
-                    'info': {},
-                    'files': {},
-                    'error': '%s: %s' % error,
-                }
+            self.directory_map.setdefault(directory, {'info': {}, 'files': {}})
+            self.directory_map[directory]['error'] = '%s: %s' % error
 
         # now files
         for filename, info in self.files.iteritems():
@@ -768,9 +695,5 @@ class NginxConfigParser(object):
 
         for filename, error in izip(self.broken_files, self.file_errors):
             directory = self.resolve_directory(filename)
-
-            if filename in self.directory_map[directory]['files']:
-                self.directory_map[directory]['files'][filename]['error'] = '%s: %s' % error
-            else:
-                self.directory_map[directory]['files'][filename] = {'info': {}, 'error': '%s: %s' % error}
-
+            self.directory_map[directory]['files'].setdefault(filename, {'info': {}})
+            self.directory_map[directory]['files'][filename]['error'] = '%s: %s' % error

@@ -18,29 +18,27 @@ class Filter(object):
         self.filter_rule_id = filter_rule_id
         self.filename = None
         self.data = {}
+        self._negated_conditions = {}
 
-        # pre-process some vars
-        data = data if data else []
+        # normalize vars
+        for key, operator, value in data or []:
+            if key == 'logname':
+                self.filename = value
+                continue
+            elif key == '$request_method':
+                normalized_value = value.upper()
+            else:
+                normalized_value = value
 
-        # normalize them
-        for raw_filter in data:
-            for k, v in raw_filter.iteritems():
-                if k == 'logname':
-                    self.filename = v
-                else:
-                    if k == '$request_method':
-                        normalized_value = v.upper()
-                    else:
-                        normalized_value = v
+            # try to treat any value as a regex
+            try:
+                normalized_value = re.compile(normalized_value)
+            except:
+                pass
 
-                    # try to treat any value as a regex
-                    try:
-                        normalized_value = re.compile(normalized_value)
-                    except:
-                        pass
-
-                    normalized_key = k.replace('$', '')
-                    self.data[normalized_key] = normalized_value
+            normalized_key = key.replace('$', '')
+            self.data[normalized_key] = normalized_value
+            self._negated_conditions[normalized_key] = (operator == '!~')
 
         self.empty = not self.data and not self.filename
 
@@ -51,12 +49,20 @@ class Filter(object):
         :return: True of False
         """
         for filter_key, filter_value in self.data.iteritems():
+            # if the key isn't in parsed, then it's irrelevant
             if filter_key not in parsed:
                 return False
 
+            negated = self._negated_conditions[filter_key]
             value = str(parsed[filter_key])
-            if not (isinstance(filter_value, str) and filter_value == value):
-                if not (isinstance(filter_value, RE_TYPE) and re.match(filter_value, value)):
-                    return False
+
+            string_equals = isinstance(filter_value, str) and filter_value == value
+            regex_matches = isinstance(filter_value, RE_TYPE) and bool(re.match(filter_value, value))
+            values_match = (string_equals or regex_matches)
+
+            if not values_match and not negated:
+                return False
+            elif values_match and negated:
+                return False
 
         return True

@@ -106,6 +106,34 @@ class NginxMetaCollector(AbstractMetaCollector):
         self.meta['start_time'] = int(master_process.create_time()) * 1000
 
 
+class GenericLinuxNginxMetaCollector(NginxMetaCollector):
+    def find_packages(self):
+        pass
+
+
+class DebianNginxMetaCollector(NginxMetaCollector):
+    pass
+
+
+class GentooNginxMetaCollector(NginxMetaCollector):
+
+    def find_packages(self):
+        """ Find a package with running binary """
+
+        equery_out, equery_err = subp.call(
+            'equery --no-color --no-pipe --quiet belongs --early-out %s' % self.object.bin_path,
+            check=False
+        )
+        if equery_out[0]:
+            category, package = equery_out[0].split('/', 1)
+            name, version = package.split('-', 1)
+            if name == 'nginx':
+                self.meta['packages'] = {category + '/nginx': version}
+
+        elif not equery_err[0]:
+            self.meta['built_from_source'] = True
+
+
 class CentosNginxMetaCollector(NginxMetaCollector):
 
     def find_packages(self):
@@ -124,10 +152,6 @@ class CentosNginxMetaCollector(NginxMetaCollector):
 
         if package:
             self.meta['packages'] = {package: version}
-
-
-class DebianNginxMetaCollector(NginxMetaCollector):
-    pass
 
 
 class FreebsdNginxMetaCollector(NginxMetaCollector):

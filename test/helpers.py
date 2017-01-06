@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from hamcrest import *
+from hamcrest.core.helpers.wrap_matcher import wrap_matcher
 
 from test.base import BaseTestCase
 from amplify.agent.objects.abstract import AbstractObject
@@ -31,8 +32,5 @@ class DummyRootObject(DummyObject):
 
 
 def collected_metric(matcher=None):
-    return only_contains(
-        instance_of(tuple),
-        has_length(2),
-        contains(greater_than(1476820876), matcher or anything())
-    )
+    matcher = anything() if matcher is None else wrap_matcher(matcher)
+    return only_contains(contains(greater_than(1476820876), matcher))

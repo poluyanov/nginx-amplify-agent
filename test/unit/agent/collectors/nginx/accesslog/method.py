@@ -6,6 +6,7 @@ from hamcrest import *
 from amplify.agent.collectors.nginx.accesslog import NginxAccessLogParser
 from amplify.agent.collectors.nginx.accesslog import NginxAccessLogsCollector
 from test.base import NginxCollectorTestCase
+from test.helpers import collected_metric
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
@@ -61,6 +62,30 @@ class LogsPerMethodTestCase(NginxCollectorTestCase):
         counters = metrics['counter']
         assert_that(counters, has_item('nginx.http.status.2xx'))
         assert_that(counters['nginx.http.status.2xx'][0][1], equal_to(1))
+
+    def test_http_status_discarded(self):
+        line_template = (
+            '127.0.0.1 - - [02/Jul/2015:14:49:48 +0000] "GET /basic_status HTTP/1.1" %d 110 "-" '
+            '"python-requests/2.2.1 CPython/2.7.6 Linux/3.13.0-48-generic"'
+        )
+
+        # collect requests with $status 400 to 498
+        lines = [line_template % x for x in xrange(400, 499)]
+        NginxAccessLogsCollector(object=self.fake_object, tail=lines).collect()
+        counter = self.fake_object.statsd.flush()['metrics']['counter']
+        assert_that(counter, has_entries(
+            'C|nginx.http.status.4xx', collected_metric(99),
+            'C|nginx.http.status.discarded', collected_metric(0)
+        ))
+
+        # collect single request with $status 499
+        tail = [line_template % 499]
+        NginxAccessLogsCollector(object=self.fake_object, tail=tail).collect()
+        counter = self.fake_object.statsd.flush()['metrics']['counter']
+        assert_that(counter, has_entries(
+            'C|nginx.http.status.4xx', collected_metric(1),
+            'C|nginx.http.status.discarded', collected_metric(1)
+        ))
 
     def test_upstreams(self):
         log_format = '$remote_addr - $remote_user [$time_local] ' + \

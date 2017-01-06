@@ -1,0 +1,37 @@
+server {
+	listen				80;
+	listen				[::]:80;
+	listen				443;
+	listen				[::]:443;
+	server_name			bbb.aaa.org 1.1.1.1;
+
+	charset				utf-8;
+	autoindex			off;
+
+	server_name_in_redirect		off;
+	port_in_redirect		off;
+
+	root				"/var/www/aaa/hpto/ssp";
+	index				index.php index.html index.htm;
+
+	access_log			"/var/log/nginx/bbb.aaa.org.log"		main;
+
+	add_header			P3P	"CP=\"CUR ADM OUR NOR STA NID\"";
+
+	# Redirect all requests for favicon.ico to the server root
+	rewrite				"^.+/favicon.ico$"	"/favicon.ico";
+
+	location ~ \.php$ {
+		try_files		$fastcgi_script_name	=404;
+
+		fastcgi_pass		bbb-servers;
+
+		fastcgi_buffers		8	16k;
+		fastcgi_buffer_size	32k;
+	}
+
+	location / {
+		proxy_pass		http://cache-servers/aaa/;
+		proxy_redirect		default;
+	}
+}

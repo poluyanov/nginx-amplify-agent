@@ -15,6 +15,7 @@ env/*
 htmlcov/*
 htmlcov
 build/*
+test/configparser
 nginx-repo.crt
 nginx-repo.key
 .coverage

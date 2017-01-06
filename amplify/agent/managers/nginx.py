@@ -226,8 +226,9 @@ class NginxManager(ObjectManager):
                 # match nginx master process
                 if 'nginx: master process' in cmd:
 
-                    # if ppid isn't 1, then the master process must have been started with a launcher
-                    if ppid != 1:
+                    # if ppid isn't 1 or 0, then the master process must have been started with a launcher
+                    # ppid == 0 might be in containers environments
+                    if ppid not in (0, 1):
                         out, err = subp.call('ps o command %d' % ppid)
                         parent_command = out[1] # take the second line because the first is a header
                         if not any(launcher in parent_command for launcher in LAUNCHERS):

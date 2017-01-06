@@ -51,7 +51,7 @@ class DevelopmentConfig(Config):
 
     config_changes = dict(
         cloud=dict(
-            api_url='http://%s:%s/1.2' % (
+            api_url='http://%s:%s/1.3' % (
                 os.environ.get('RECEIVER_PORT_5000_TCP_ADDR'),
                 os.environ.get('RECEIVER_PORT_5000_TCP_PORT')
             ),
@@ -62,7 +62,7 @@ class DevelopmentConfig(Config):
         ),
         daemon=dict(
             pid='/var/run/amplify_agent.pid',
-            cpu_limit=1000.0,
+            cpu_limit=100000.0,
             cpu_sleep=0.01
         )
     )
@@ -73,7 +73,7 @@ class SandboxConfig(Config):
 
     config_changes = dict(
         cloud=dict(
-            api_url='http://localhost:5001/1.2',
+            api_url='http://localhost:5001/1.3',
             verify_ssl_cert=False
         ),
         credentials=dict(

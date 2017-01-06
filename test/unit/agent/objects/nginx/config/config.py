@@ -27,6 +27,8 @@ json_config = os.getcwd() + '/test/fixtures/nginx/custom/json.conf'
 ssl_simple_config = os.getcwd() + '/test/fixtures/nginx/ssl/simple/nginx.conf'
 regex_status_config = os.getcwd() + '/test/fixtures/nginx/regex_status/nginx.conf'
 wildcard_directory_config = os.getcwd() + '/test/fixtures/nginx/wildcard_directory/etc/nginx/nginx.conf'
+tabs_everywhere = os.getcwd() + '/test/fixtures/nginx/tabs/nginx.conf'
+status_urls = os.getcwd() + '/test/fixtures/nginx/status_urls/nginx.conf'
 
 
 class ConfigTestCase(BaseTestCase):
@@ -38,12 +40,26 @@ class ConfigTestCase(BaseTestCase):
         # error logs
         assert_that(config.error_logs, has_length(1))
         assert_that(config.error_logs, has_key('/var/log/nginx/error.log'))
+        assert_that(config.error_logs.values(), only_contains(
+            has_entries(
+                log_level=instance_of(str),
+                permissions=matches_regexp('[0-7]{4}'),
+                readable=instance_of(bool)
+            )
+        ))
 
         # access logs
         assert_that(config.access_logs, has_length(2))
         assert_that(config.access_logs, has_item('/var/log/nginx/access.log'))
         assert_that(config.access_logs, has_item('/var/log/nginx/superaccess.log'))
-        assert_that(config.access_logs['/var/log/nginx/access.log'], equal_to('super_log_format'))
+        assert_that(config.access_logs['/var/log/nginx/access.log']['log_format'], equal_to('super_log_format'))
+        assert_that(config.access_logs.values(), only_contains(
+            has_entries(
+                log_format=any_of(is_in(config.log_formats), none()),
+                permissions=matches_regexp('[0-7]{4}'),
+                readable=instance_of(bool)
+            )
+        ))
 
         # log formats
         assert_that(config.log_formats, has_length(1))
@@ -76,12 +92,26 @@ class ConfigTestCase(BaseTestCase):
         # error logs
         assert_that(config.error_logs, has_length(1))
         assert_that(config.error_logs, has_key('/var/log/nginx-error.log'))
+        assert_that(config.error_logs.values(), only_contains(
+            has_entries(
+                log_level=instance_of(str),
+                permissions=matches_regexp('[0-7]{4}'),
+                readable=instance_of(bool)
+            )
+        ))
 
         # access logs
         assert_that(config.access_logs, has_length(6))
         assert_that(config.access_logs, has_item('/var/log/default.log'))
         assert_that(config.access_logs, has_item('/var/log/pp.log'))
-        assert_that(config.access_logs['/var/log/pp.log'], equal_to('main'))
+        assert_that(config.access_logs['/var/log/pp.log']['log_format'], equal_to('main'))
+        assert_that(config.access_logs.values(), only_contains(
+            has_entries(
+                log_format=any_of(is_in(config.log_formats), none()),
+                permissions=matches_regexp('[0-7]{4}'),
+                readable=instance_of(bool)
+            )
+        ))
 
         # log formats
         assert_that(config.log_formats, has_length(1))
@@ -107,17 +137,10 @@ class ConfigTestCase(BaseTestCase):
         context.log.info(config.files)
         context.log.info(config.checksum())
 
-        # error logs
-        assert_that(config.error_logs, has_length(0))
-
-        # access logs
-        assert_that(config.access_logs, has_length(0))
-
-        # log formats
-        assert_that(config.log_formats, has_length(0))
-
-        # stub status url
-        assert_that(config.stub_status_urls, has_length(0))
+        assert_that(config.error_logs, empty())
+        assert_that(config.access_logs, empty())
+        assert_that(config.log_formats, empty())
+        assert_that(config.stub_status_urls, empty())
 
     def test_broken(self):
         config = NginxConfig(broken_config)
@@ -143,8 +166,8 @@ class ConfigTestCase(BaseTestCase):
         assert_that(http_bucket, has_key('proxy_buffering'))
         assert_that(http_bucket, has_key('proxy_buffers'))
 
-        assert_that(config.parser_errors, has_length(0))
-        assert_that(config.test_errors, has_length(0))
+        assert_that(config.parser_errors, empty())
+        assert_that(config.test_errors, empty())
 
     def test_proxy_buffers_complex(self):
         config = NginxConfig(proxy_buffers_complex_config)
@@ -160,8 +183,8 @@ class ConfigTestCase(BaseTestCase):
         assert_that(location_bucket, has_key('proxy_buffering'))
         assert_that(location_bucket, has_key('proxy_buffers'))
 
-        assert_that(config.parser_errors, has_length(0))
-        assert_that(config.test_errors, has_length(0))
+        assert_that(config.parser_errors, empty())
+        assert_that(config.test_errors, empty())
 
     def test_parse_tabbed_config(self):
         config = NginxConfig(tabs_config)
@@ -249,12 +272,18 @@ class ConfigTestCase(BaseTestCase):
                 '1.1.1.1:80/nginx_status',
                 '1.1.1.1:80/status',
             ],
-            '1.1.1.1:81': ['1.1.1.1:81/nginx_status'],
-            '1.1.1.1:82': [
-                '1.1.1.1:82/status_weird_thing', '1.1.1.1:82/nginx_status_weird_thing',
-                '1.1.1.1:82/status_weird_some', '1.1.1.1:82/nginx_status_weird_some'
+            '1.1.1.1:81': [
+                '1.1.1.1:81/nginx_status'
             ],
-            '1.1.1.1:84': ['1.1.1.1:84/valid_location'],
+            '1.1.1.1:82': [
+                '1.1.1.1:82/status_weird_thing',
+                '1.1.1.1:82/nginx_status_weird_thing',
+                '1.1.1.1:82/status_weird_some',
+                '1.1.1.1:82/nginx_status_weird_some'
+            ],
+            '1.1.1.1:84': [
+                '1.1.1.1:84/valid_location'
+            ],
         }
 
         for url in config.stub_status_urls:
@@ -282,6 +311,23 @@ class ConfigTestCase(BaseTestCase):
             files,
             has_key('/amplify/test/fixtures/nginx/wildcard_directory/data/www/test.domain.info/config/nginx/test.conf')
         )
+
+    def test_logs_definitions_with_tabs(self):
+        config = NginxConfig(tabs_everywhere)
+        config.full_parse()
+
+        assert_that(config.access_logs, has_key('/var/log/nginx/bbb.aaa.org.log'))
+
+    def test_status_urls(self):
+        """
+        Tests that statuses are found correctly
+        """
+        config = NginxConfig(status_urls)
+        config.full_parse()
+
+        assert_that(config, has_property('stub_status_urls', ['127.0.0.1:80/', '127.0.0.1:80/nginx_status']))
+        assert_that(config, has_property('plus_status_external_urls', ['www.example.com:80/status']))
+        assert_that(config, has_property('plus_status_internal_urls', ['127.0.0.1:80/status']))
 
 
 class MiscConfigTestCase(BaseTestCase):
@@ -313,11 +359,8 @@ class ExcludeConfigTestCase(BaseTestCase):
 
         del context.app_config['nginx']['exclude_logs']
 
-        # error logs
-        assert_that(config.error_logs, has_length(0))
-
-        # access logs
-        assert_that(config.access_logs, has_length(0))
+        assert_that(config.error_logs, empty())
+        assert_that(config.access_logs, empty())
 
         # log formats
         assert_that(config.log_formats, has_length(1))
@@ -352,11 +395,8 @@ class ExcludeConfigTestCase(BaseTestCase):
 
         del context.app_config['nginx']['exclude_logs']
 
-        # error logs
-        assert_that(config.error_logs, has_length(0))
-
-        # access logs
-        assert_that(config.access_logs, has_length(0))
+        assert_that(config.error_logs, empty())
+        assert_that(config.access_logs, empty())
 
         # log formats
         assert_that(config.log_formats, has_length(1))
@@ -391,11 +431,8 @@ class ExcludeConfigTestCase(BaseTestCase):
 
         del context.app_config['nginx']['exclude_logs']
 
-        # error logs
-        assert_that(config.error_logs, has_length(0))
-
-        # access logs
-        assert_that(config.access_logs, has_length(0))
+        assert_that(config.error_logs, empty())
+        assert_that(config.access_logs, empty())
 
         # log formats
         assert_that(config.log_formats, has_length(1))
@@ -430,13 +467,18 @@ class ExcludeConfigTestCase(BaseTestCase):
 
         del context.app_config['nginx']['exclude_logs']
 
-        # error logs
-        assert_that(config.error_logs, has_length(0))
+        assert_that(config.error_logs, empty())
 
-        # access logs
         assert_that(config.access_logs, has_length(1))
         assert_that(config.access_logs, has_item('/var/log/nginx/access.log'))
-        assert_that(config.access_logs['/var/log/nginx/access.log'], equal_to('super_log_format'))
+        assert_that(config.access_logs['/var/log/nginx/access.log']['log_format'], equal_to('super_log_format'))
+        assert_that(config.access_logs.values(), only_contains(
+            has_entries(
+                log_format=any_of(is_in(config.log_formats), none()),
+                permissions=matches_regexp('[0-7]{4}'),
+                readable=instance_of(bool)
+            )
+        ))
 
         # log formats
         assert_that(config.log_formats, has_length(1))

@@ -75,29 +75,36 @@ class NginxAccessLogParser(object):
         self.raw_format = prep_raw(self.raw_format).rstrip()
 
         def finalize_key():
-            key_without_dollar = current_key[1:]
-            self.keys.append(key_without_dollar)
-            rxp = self.common_variables.get(key_without_dollar, self.default_variable)[0]
+            """
+            Finalizes key:
+            1) removes $ and {} from it
+            2) adds a regex for the key to the regex_string
+            """
+            chars_to_remove = ['$', '{', '}']
+            plain_key = current_key.translate(None, ''.join(chars_to_remove))
+
+            self.keys.append(plain_key)
+            rxp = self.common_variables.get(plain_key, self.default_variable)[0]
+
             # Handle formats with multiple instances of the same variable.
-            var_count = self.keys.count(key_without_dollar)
+            var_count = self.keys.count(plain_key)
             if var_count > 1:  # Duplicate variables will be named starting at 2 (var, var2, var3, etc...)
-                regex_var_name = '%s_occurance_%s' % (key_without_dollar, var_count)
+                regex_var_name = '%s_occurance_%s' % (plain_key, var_count)
             else:
-                regex_var_name = key_without_dollar
+                regex_var_name = plain_key
             self.regex_string += '(?P<%s>%s)' % (regex_var_name, rxp)
 
         for char in self.raw_format:
             if current_key:
-                # if there's a current key
-                if char.isalpha() or char.isdigit() or char == '_':
-                    # continue building key
+                if char.isalpha() or char.isdigit() or char == '_' or (char == '{' and current_key == '$'):
                     current_key += char
-                else:
-                    # finalize current_key
+                elif char == '}':  # the end of ${key} format
+                    current_key += char
+                    finalize_key()
+                else:  # finalize key and start a new one
                     finalize_key()
 
-                    if char == '$':
-                        # if there's a new key - create it
+                    if char == '$':  # if there's a new key - create it
                         current_key = char
                     else:
                         # otherwise - add char to regex

@@ -1,0 +1,52 @@
+server {
+	listen				80;
+	listen				[::]:80;
+	listen				443 default_server;
+	listen				[::]:443 default_server;
+	server_name			cluster.aaa.org front.aaa.org stats.aaa.org beacon.aaa.org cluster.aaa-lab.org 1.1.1.1;
+
+	charset				utf-8;
+	autoindex			off;
+
+	server_name_in_redirect		off;
+	port_in_redirect		off;
+
+	root				"/var/www/aaa";
+	index				index.php index.html index.htm;
+
+	access_log			"/var/log/nginx/cluster.aaa.org.log"					main;
+	access_log			syslog:server=1.1.1.1,facility=local7,severity=info,tag=nginx/cluster	syslog;
+
+	add_header			P3P	"CP=\"CUR ADM OUR NOR STA NID\"";
+
+	# Redirect all requests for favicon.ico to the server root
+	rewrite				"^.+/favicon.ico$"	"/favicon.ico";
+
+	location = /iimg.php {
+		fastcgi_pass		p-servers;
+
+		fastcgi_buffers		8	16k;
+		fastcgi_buffer_size	32k;
+	}
+
+	location = /hpto/aaa.php {
+		fastcgi_pass		main-servers;
+
+		fastcgi_buffers		16	16k;
+		fastcgi_buffer_size	32k;
+	}
+
+	location ~ \.php$ {
+		try_files		$fastcgi_script_name	=404;
+
+		fastcgi_pass		main-servers;
+
+		fastcgi_buffers		8	16k;
+		fastcgi_buffer_size	32k;
+	}
+
+	location / {
+		proxy_pass		http://cache-servers/aaa/;
+		proxy_redirect		default;
+	}
+}

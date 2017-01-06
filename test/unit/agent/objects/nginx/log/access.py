@@ -336,3 +336,22 @@ class LogParserTestCase(BaseTestCase):
 
         assert_that(parsed['upstream_addr'], equal_to(['173.194.32.133:80', '173.194.32.133:81', '173.194.32.133:82']))
         assert_that(parsed['upstream_status'], equal_to(['200', '200', '200']))
+
+    def test_format_with_braces(self):
+        """
+        Check log format with braces
+        """
+        user_format = '$remote_addr - $remote_user [$time_local] $request ' \
+                      '"$status" $body_bytes_sent "$http_referer" ' \
+                      '"$http_user_agent" "$http_x_forwarded_for" ' \
+                      '"http-host=$host" "elapsed=${request_time}s" ' \
+                      '"scheme=${scheme}"'
+
+        expected_keys = [
+            'remote_user', 'remote_addr', 'time_local', 'status',
+            'request_time', 'scheme', 'host',
+        ]
+
+        parser = NginxAccessLogParser(user_format)
+        for key in expected_keys:
+            assert_that(parser.keys, has_item(key))

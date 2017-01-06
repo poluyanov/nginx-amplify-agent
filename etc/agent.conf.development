@@ -2,7 +2,7 @@
 api_key = 
 hostname = 
 uuid =
-imagename = 
+imagename =
 
 [nginx]
 #user = nginx
@@ -12,10 +12,10 @@ imagename =
 #exclude_logs =
 
 [proxies]
-https = 
+https =
 
 [cloud]
-api_url = 
+api_url =
 api_timeout =
 
 [listeners]
@@ -78,4 +78,3 @@ class = logging.handlers.WatchedFileHandler
 level = DEBUG
 formatter = simpleFormatter
 args = ('log/agent.log', 'a', None, 1)
-

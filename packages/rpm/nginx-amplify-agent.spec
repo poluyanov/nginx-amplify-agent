@@ -109,9 +109,9 @@ elif [ $1 -eq 2 ] ; then
         service amplify-agent stop > /dev/null 2>&1 < /dev/null
     fi
 
-    # Change API URL to 1.1
+    # Change API URL to 1.3
     if [ -f "%{agent_conf_file}" ]; then
-	    sh -c "sed -i.old 's/api_url.*receiver.*$/api_url = https:\/\/receiver.amplify.nginx.com:443\/1.2/' \
+	    sh -c "sed -i.old 's/api_url.*receiver.*$/api_url = https:\/\/receiver.amplify.nginx.com:443\/1.3/' \
 	    %{agent_conf_file}"
     else
         test -f "%{agent_conf_file}.default" && \
@@ -138,14 +138,19 @@ fi
 
 
 %changelog
+* Thu Jan 5 2017 Mike Belov <dedm@nginx.com> 0.41-1
+- 0.41-1
+- Generic support for *nix systems
+- Fixes for config parser
+
 * Tue Nov 7 2016 Mike Belov <dedm@nginx.com> 0.40-2
 - 0.40-2
-- Bug fixes
+- Bug fixe8
 
 * Tue Nov 1 2016 Mike Belov <dedm@nginx.com> 0.40-1
 - 0.40-1
-- Syslog support
 - Bug fixes
+- Syslog support
 
 * Wed Sep 28 2016 Mike Belov <dedm@nginx.com> 0.39-3
 - 0.39-3
