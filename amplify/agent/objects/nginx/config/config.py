@@ -363,7 +363,7 @@ class NginxConfig(object):
 
         error_log_path = '%s/logs/error.log' % self.prefix
         if os.path.isfile(error_log_path) and error_log_path not in self.error_logs:
-            self.error_logs[error_log_path] = {'log_error': 'error'}
+            self.error_logs[error_log_path] = {'log_level': 'error'}
 
     def run_ssl_analysis(self):
         """
@@ -407,7 +407,7 @@ class NginxConfig(object):
         Iterate through log file stores and add permissions and if it is readable to the log data
         """
         for logs in (self.access_logs, self.error_logs):
-            for log_name in logs:
+            for log_name in filter(lambda name: not name.startswith('syslog'), logs):
 
                 __, __, permissions = NginxConfigParser.get_filesystem_info(log_name)
                 logs[log_name]['permissions'] = permissions

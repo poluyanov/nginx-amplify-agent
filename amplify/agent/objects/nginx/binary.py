@@ -2,6 +2,7 @@
 import re
 
 from amplify.agent.common.util import subp
+from amplify.agent.common.context import context
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
@@ -12,6 +13,11 @@ __email__ = "dedm@nginx.com"
 
 DEFAULT_PREFIX = '/usr/local/nginx'
 DEFAULT_CONFPATH = 'conf/nginx.conf'
+
+_SSL_LIB_CAPTURE_GROUPS = r'(\S+) +(\S+)(?: +(\d{1,2} +\w{3,} +\d{4}))?'
+BUILT_WITH_RE = re.compile('^built with ' + _SSL_LIB_CAPTURE_GROUPS)
+RUNNING_WITH_RE = re.compile('\(running with ' + _SSL_LIB_CAPTURE_GROUPS + '\)$')
+RUN_WITH_RE = re.compile('^run with ' + _SSL_LIB_CAPTURE_GROUPS)
 
 
 def nginx_v(bin_path):
@@ -31,23 +37,20 @@ def nginx_v(bin_path):
     _, nginx_v_err = subp.call("%s -V" % bin_path)
     for line in nginx_v_err:
         # SSL stuff
-        if line.lower().startswith('built with') and 'ssl' in line.lower():
-            lib_name, lib_version, lib_day, lib_month, lib_year = line.split()[2:7]
-            lib_date = ' '.join((lib_day, lib_month, lib_year))
-            result['ssl']['built'] = [lib_name, lib_version, lib_date]
+        try:
+            if line.lower().startswith('built with') and 'ssl' in line.lower():
+                match = BUILT_WITH_RE.search(line)
+                result['ssl']['built'] = list(match.groups())
 
-            # example: "built with OpenSSL 1.0.2g-fips 1 Mar 2016 (running with OpenSSL 1.0.2g 1 Mar 2016)"
-            if '(running with' in line.lower() and ')' in line.lower():
-                parenthetical = line.split('(', 1)[1].rsplit(')', 1)[0]
-                lib_name, lib_version, lib_day, lib_month, lib_year = parenthetical.split()[2:7]
-                lib_date = ' '.join((lib_day, lib_month, lib_year))
+                # example: "built with OpenSSL 1.0.2g-fips 1 Mar 2016 (running with OpenSSL 1.0.2g 1 Mar 2016)"
+                match = RUNNING_WITH_RE.search(line) or match
+                result['ssl']['run'] = list(match.groups())
 
-            result['ssl']['run'] = [lib_name, lib_version, lib_date]
-
-        elif line.lower().startswith('run with') and 'ssl' in line.lower():
-            lib_name, lib_version, lib_day, lib_month, lib_year = line.split()[2:7]
-            lib_date = ' '.join((lib_day, lib_month, lib_year))
-            result['ssl']['run'] = [lib_name, lib_version, lib_date]
+            elif line.lower().startswith('run with') and 'ssl' in line.lower():
+                match = RUN_WITH_RE.search(line)
+                result['ssl']['run'] = list(match.groups())
+        except:
+            context.log.error('Failed to determine ssl library from "%s"' % line, exc_info=True)
 
         parts = line.split(':', 1)
         if len(parts) < 2:

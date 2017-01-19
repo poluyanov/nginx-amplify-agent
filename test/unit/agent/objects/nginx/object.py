@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import copy
 import time
+import os
+import shutil
 
 from hamcrest import *
 
 import amplify.agent.common.context
 
 from amplify.agent.managers.nginx import NginxManager
-
 from test.base import RealNginxTestCase, nginx_plus_test, disabled_test
 
 __author__ = "Mike Belov"
@@ -22,10 +23,27 @@ class NginxObjectTestCase(RealNginxTestCase):
 
     def setup_method(self, method):
         super(NginxObjectTestCase, self).setup_method(method)
+
         self.original_app_config = copy.deepcopy(amplify.agent.common.context.context.app_config.config)
+
+        # create default dir
+        try:
+            os.mkdir('/usr/share/nginx/logs/')
+        except:
+            pass
+
+        # create default logs
+        with open('/usr/share/nginx/logs/access.log', 'a'):  # default access log
+            os.utime('/usr/share/nginx/logs/access.log', (1,1))
+        with open('/usr/share/nginx/logs/error.log', 'a'):  # default error log
+            os.utime('/usr/share/nginx/logs/error.log', (1,1))
 
     def teardown_method(self, method):
         amplify.agent.common.context.context.app_config.config = copy.deepcopy(self.original_app_config)
+
+        # remove default dir
+        shutil.rmtree('/usr/share/nginx/logs/')
+
         super(NginxObjectTestCase, self).teardown_method(method)
 
     @nginx_plus_test
@@ -156,3 +174,14 @@ class NginxObjectTestCase(RealNginxTestCase):
     @disabled_test
     def test_not_start_syslog_listener(self):
         pass
+
+    def test_with_default_logs(self):
+        container = NginxManager()
+        container._discover_objects()
+        assert_that(container.objects.objects_by_type[container.type], has_length(1))
+
+        # get nginx object
+        nginx_obj = container.objects.objects[container.objects.objects_by_type[container.type][0]]
+
+        # just check that everything went ok
+        assert_that(nginx_obj, not_none())

@@ -47,8 +47,11 @@ class FileTail(Pipeline):
         self._inode = self._st_ino()
 
     def __del__(self):
-        if self._filehandle():
-            self._fh.close()
+        try:
+            if self._filehandle():
+                self._fh.close()
+        except StopIteration:
+            pass
 
     def __iter__(self):
         self._filehandle()

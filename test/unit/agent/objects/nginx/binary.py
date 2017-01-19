@@ -54,6 +54,26 @@ class NginxVersionInfoTestCase(TestWithFakeSubpCall):
             configure=empty()
         ))
 
+    def test_1_11_8_libressl(self):
+        self.push_subp_result(
+            stdout_lines=[],
+            stderr_lines=[
+                'nginx version: nginx/1.11.8',
+                'built by gcc 6.3.0 20161229 (Debian 6.3.0-2)',
+                'built with LibreSSL 2.5.0',
+                'TLS SNI support enabled'
+            ]
+        )
+        assert_that(nginx_v('foo'), has_entries(
+            version='1.11.8',
+            ssl=has_entries(
+                built=contains('LibreSSL', '2.5.0', None),
+                run=contains('LibreSSL', '2.5.0', None)
+            ),
+            plus=has_entries(enabled=False, release=None),
+            configure=empty()
+        ))
+
     def test_1_11_2_open_resty(self):
         self.push_subp_result(
             stdout_lines=[],

@@ -138,6 +138,11 @@ fi
 
 
 %changelog
+* Thu Jan 19 2017 Mike Belov <dedm@nginx.com> 0.41-2
+- 0.41-2
+- Updated requests library (fixes some memory leaks)
+- Fixes for config and nginx -V parsing
+
 * Thu Jan 5 2017 Mike Belov <dedm@nginx.com> 0.41-1
 - 0.41-1
 - Generic support for *nix systems

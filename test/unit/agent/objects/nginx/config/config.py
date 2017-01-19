@@ -106,10 +106,18 @@ class ConfigTestCase(BaseTestCase):
         assert_that(config.access_logs, has_item('/var/log/pp.log'))
         assert_that(config.access_logs['/var/log/pp.log']['log_format'], equal_to('main'))
         assert_that(config.access_logs.values(), only_contains(
-            has_entries(
-                log_format=any_of(is_in(config.log_formats), none()),
-                permissions=matches_regexp('[0-7]{4}'),
-                readable=instance_of(bool)
+            any_of(
+                has_entries(
+                    log_format=any_of(is_in(config.log_formats), none()),
+                    permissions=matches_regexp('[0-7]{4}'),
+                    readable=instance_of(bool)
+                ),
+                all_of(
+                    has_length(1),
+                    has_entries(
+                        log_format=any_of(is_in(config.log_formats), none())
+                    )
+                )  # syslog will not have permissions or readable values
             )
         ))
 
