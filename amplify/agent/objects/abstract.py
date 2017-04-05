@@ -52,6 +52,8 @@ class AbstractObject(object):
         self.eventd = EventdClient(object=self)
         self.metad = MetadClient(object=self)
         self.configd = self.data.get('configd', ConfigdClient(object=self))
+        # configd is checked for in data so it can be passed between objects at the manger level.  This avoids excess
+        # config parsing in nginx objects.
         self.clients = {
             'meta': self.metad,
             'metrics': self.statsd,
@@ -59,8 +61,8 @@ class AbstractObject(object):
             'configs': self.configd,
         }  # This is a client mapping to aid with lookup during flush by Bridge.
 
-        self.definition_hash_cache = None
-        self.local_id_cache = None
+        self._definition_hash = None
+        self._local_id = None
 
     @abc.abstractproperty
     def definition(self):
@@ -76,10 +78,10 @@ class AbstractObject(object):
 
     @property
     def definition_hash(self):
-        if not self.definition_hash_cache:
+        if not self._definition_hash:
             definition_string = str(map(lambda x: u'%s:%s' % (x, self.definition[x]), sorted(self.definition.keys())))
-            self.definition_hash_cache = hashlib.sha256(definition_string).hexdigest()
-        return self.definition_hash_cache
+            self._definition_hash = hashlib.sha256(definition_string).hexdigest()
+        return self._definition_hash
 
     @staticmethod
     def hash(definition):
@@ -92,22 +94,36 @@ class AbstractObject(object):
         """
         Class specific local_id_args for local_id hash.  Should be overridden by objects that utilize local_id's.
         (Optional for system/root objects)
+        (Order sensitive)
+
+        :return: Tuple String arguments to be used in string hashable
         """
         return tuple()
 
     @property
     def local_id(self):
+        """
+        This property will use assigned local_id (from self.local_id_cache) if one exists or construct one from the
+        tuple of arguments returned by self.local_id_args.
+
+        :return: String Hash representation of local_id.
+        """
         # TODO: Refactor Nginx object to use this style local_id property.
-        if not self.local_id_cache and len(self.local_id_args) == 3:
-            self.local_id_cache = hashlib.sha256(
-                '%s_%s_%s' % (self.local_id_args[0], self.local_id_args[1], self.local_id_args[2])
-            ).hexdigest()
-        return self.local_id_cache
+        if not self._local_id and len(self.local_id_args):
+            self._local_id = hashlib.sha256('_'.join(self.local_id_args)).hexdigest()
+        return self._local_id
 
     @staticmethod
-    def hash_local(*args):
-        if len(args) == 3:
-            return hashlib.sha256('%s_%s_%s' % (args[0], args[1], args[2])).hexdigest()
+    def hash_local(*local_id_args):
+        """
+        Helper for hashing passed arguments in local_id style.  Helpful for lookup/hash comparisons.
+
+        :param local_id_args: List Ordered arguments for local_id hash
+        :return: String 64 len hash of local_id
+        """
+        if len(local_id_args):
+            args = map(str, local_id_args)
+            return hashlib.sha256('_'.join(args)).hexdigest()
 
     def start(self):
         """
@@ -124,6 +140,8 @@ class AbstractObject(object):
         # Kill raises errors with gevent.
         # for thread in self.threads:
         #     thread.kill()
+
+        # For every collector, if the collector has a .tail attribute and is a Pipeline, send a stop signal.
         for collector in self.collectors:
             if hasattr(collector, 'tail') and isinstance(collector.tail, Pipeline):
                 collector.tail.stop()

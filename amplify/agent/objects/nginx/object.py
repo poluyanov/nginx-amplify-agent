@@ -4,10 +4,9 @@ import time
 from amplify.agent.collectors.nginx.accesslog import NginxAccessLogsCollector
 from amplify.agent.collectors.nginx.config import NginxConfigCollector
 from amplify.agent.collectors.nginx.errorlog import NginxErrorLogsCollector
-from amplify.agent.collectors.nginx.metrics import NginxMetricsCollector
 
 from amplify.agent.common.context import context
-from amplify.agent.common.util import host, http, net
+from amplify.agent.common.util import http, net
 from amplify.agent.data.eventd import INFO
 from amplify.agent.objects.abstract import AbstractObject
 from amplify.agent.objects.nginx.binary import nginx_v
@@ -34,9 +33,8 @@ class NginxObject(AbstractObject):
         # Have to override intervals here because new container sub objects.
         self.intervals = context.app_config['containers'].get('nginx', {}).get('poll_intervals', {'default': 10})
 
-        self.root_uuid = self.data.get(
-            'root_uuid') or context.objects.root_object.uuid if context.objects.root_object else None
-        self.local_id_cache = self.data['local_id']  # Assigned by manager
+        self.root_uuid = self.data.get('root_uuid') or getattr(context.objects.root_object, 'uuid', None)
+        self._local_id = self.data['local_id']  # Assigned by manager
         self.pid = self.data['pid']
         self.version = self.data['version']
         self.workers = self.data['workers']

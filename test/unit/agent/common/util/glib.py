@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from hamcrest import *
 
-from test.base import BaseTestCase, disabled_test
+from test.base import BaseTestCase
 
 import amplify.agent.common.util.glib as glib
 

@@ -10,7 +10,6 @@ the received messages when iterated.
 import copy
 import asyncore
 import socket
-import time
 from collections import deque
 
 from threading import current_thread
@@ -99,6 +98,7 @@ class SyslogListener(AbstractManager):
 
     def stop(self):
         self.server.close()
+        context.teardown_thread_id()
         super(SyslogListener, self).stop()
 
 

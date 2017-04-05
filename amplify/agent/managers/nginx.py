@@ -230,7 +230,7 @@ class NginxManager(ObjectManager):
                     # ppid == 0 might be in containers environments
                     if ppid not in (0, 1):
                         out, err = subp.call('ps o command %d' % ppid)
-                        parent_command = out[1] # take the second line because the first is a header
+                        parent_command = out[1]  # take the second line because the first is a header
                         if not any(launcher in parent_command for launcher in LAUNCHERS):
                             context.log.debug(
                                 'launching nginx with "%s" is not currently supported' % parent_command

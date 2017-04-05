@@ -355,3 +355,23 @@ class LogParserTestCase(BaseTestCase):
         parser = NginxAccessLogParser(user_format)
         for key in expected_keys:
             assert_that(parser.keys, has_item(key))
+
+    def test_malformed_request_doesnt_raise_exception(self):
+        log_format = 'log_format receiver-lb' + \
+                    '$remote_addr - $remote_user [$time_local] "$request" ' + \
+                    '$status $body_bytes_sent "$http_referer" ' + \
+                    '"$http_user_agent" "$http_x_forwarded_for" "$server_name" $request_id ' + \
+                    '$upstream_http_x_amplify_upstream ' + \
+                    '"$upstream_addr" "$upstream_response_time" "$upstream_status" ' + \
+                    '$ssl_protocol $ssl_cipher $connection/$connection_requests $request_length "$request_time"'
+
+        parser = NginxAccessLogParser(log_format)
+        line = '139.162.124.167 - - [16/Mar/2017:00:53:14 +0000] "\x04\x01\x1F\x00\x00\x00\x00\x00\x00" ' + \
+               '400 166 "-" "-" "-" "receiver.amplify.nginx.com" 9dbaa8264268b8aa55fb9af077834702 ' + \
+               '- "-" "-" "-" - - 42433164/1 0 "0.108"'
+
+        parsed = parser.parse(line)
+        assert_that(parsed, equal_to(None))
+
+
+

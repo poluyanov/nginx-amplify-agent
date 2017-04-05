@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+import ast
 import os
 import sys
 import time
 
-from itertools import cycle
+from threading import current_thread
 
 from amplify.agent import Singleton
 from amplify.agent.common.util.ps import Process
+from amplify.agent.common.util.cycle import cycle
 
 try:
     import thread
@@ -34,8 +36,8 @@ class Context(Singleton):
 
         self.set_pid()
 
-        self.version_major = 0.41
-        self.version_build = 2
+        self.version_major = 0.42
+        self.version_build = 1
         self.version = '%.2f-%s' % (self.version_major, self.version_build)
         self.environment = None
         self.imagename = None
@@ -45,6 +47,7 @@ class Context(Singleton):
         self.app_name = None
         self.app_config = None
         self.listeners = None
+        self.tags = []
         self.ids = {}
         self.action_ids = {}
         self.cloud_restart = False  # Handle improper duplicate logging of start/stop events.
@@ -57,7 +60,10 @@ class Context(Singleton):
 
         self.start_time = int(time.time())
 
+        # ring 0 thread_id set up and protect
         self.setup_thread_id()
+        self.supervisor_thread_id = self.ids.keys()[0]
+        
         self.setup_environment()
 
         self.backpressure_time = 0
@@ -77,6 +83,7 @@ class Context(Singleton):
         self._setup_app_config(**kwargs)
         self._setup_app_logs()
         self._setup_app_listeners()
+        self._setup_tags()
         self._setup_host_details()
         self._setup_http_client()
         self._setup_object_tank()
@@ -139,6 +146,25 @@ class Context(Singleton):
                     except:
                         pass  # just ignore bad ipv4 definitions for now
 
+    def _setup_tags(self):
+        # get the tags line from the tags section of the app config
+        line = self.app_config.get('tags', {}).get('tags', '')
+        try:
+            # first try to parse tags assuming they're using the standard python syntax
+            tags = ast.literal_eval(line)
+        except:
+            # if literal eval didn't work, assume they're using the unquoted comma-separated syntax
+            tags = filter(len, map(str.strip, line.split(',')))
+
+        # if 'tags' is a single quoted string, don't create a tag for each character
+        if isinstance(tags, (str, unicode)):
+            tags = [tags]
+
+        self.tags = []
+        for tag in tags:
+            key, value = tag.split(':', 1) if ':' in tag else (None, tag)
+            self.tags.append({'key': key, 'value': value})
+
     def _setup_host_details(self):
         from amplify.agent.common.util.host import hostname, uuid
         self.hostname = hostname()
@@ -173,8 +199,31 @@ class Context(Singleton):
 
     def setup_thread_id(self):
         thread_id = thread.get_ident()
-        self.ids[thread_id] = cycle(xrange(10000, 10000000))
+        self.ids[thread_id] = cycle(10000, 10000000)
         self.action_ids[thread_id] = '%s_%s' % (thread_id, self.ids[thread_id].next())
+
+    def teardown_thread_id(self):
+        thread_id = thread.get_ident()
+
+        # if thread_id to teardown is supervisor itself, break
+        if thread_id == self.supervisor_thread_id:
+            self.log.debug(
+                'skipping teardown of supervisor thread_id (id:%s, name:%s)' % (
+                    self.supervisor_thread_id,
+                    current_thread().name
+                )
+            )
+            return
+    
+        try:
+            del self.ids[thread_id]
+        except KeyError:
+            pass
+
+        try:
+            del self.action_ids[thread_id]
+        except KeyError:
+            pass
 
     @property
     def log(self):

@@ -187,18 +187,19 @@ class NginxAccessLogParser(object):
                     line, self.regex_string
                 )
             )
+            return None
 
         if 'request' in result:
             try:
                 method, uri, proto = result['request'].split(' ')
+                result['request_method'] = method
+                result['request_uri'] = uri
+                result['server_protocol'] = proto
             except:
                 result['malformed'] = True
+                method = ''
 
             if not result['malformed'] and len(method) < 3:
                 result['malformed'] = True
-
-            result['request_method'] = method
-            result['request_uri'] = uri
-            result['server_protocol'] = proto
 
         return result

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from amplify.agent.collectors.abstract import AbstractCollector
+import time
 
+from amplify.agent.collectors.abstract import AbstractCollector
 from amplify.agent.common.context import context
 from amplify.agent.pipelines.abstract import Pipeline
 from amplify.agent.pipelines.file import FileTail
@@ -116,6 +117,11 @@ class NginxAccessLogsCollector(AbstractCollector):
         count = 0
         for line in self.tail:
             count += 1
+
+            # release GIL every 1000 of lines
+            if count % 1000 == 0:
+                time.sleep(0.001)
+
             try:
                 parsed = self.parser.parse(line)
             except:

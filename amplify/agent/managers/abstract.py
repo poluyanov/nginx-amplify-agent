@@ -4,9 +4,7 @@ import time
 
 from threading import current_thread
 
-from amplify.agent import Singleton
 from amplify.agent.common.context import context
-from amplify.agent.common.util import host
 
 
 __author__ = "Grant Hulegaard"
@@ -67,6 +65,7 @@ class AbstractManager(object):
 
     def stop(self):
         # TODO: Think about whether or not this is necessary.  Managers should probably be receiving thread.kill().
+        context.teardown_thread_id()
         self.running = False
 
     def __del__(self):

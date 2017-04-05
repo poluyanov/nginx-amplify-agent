@@ -18,6 +18,9 @@ https =
 api_url =
 api_timeout =
 
+[extensions]
+phpfpm = True
+
 [listeners]
 keys = syslog-default,syslog-alternate
 

@@ -7,6 +7,7 @@ psutil==4.0.0
 requests==2.12.4
 ujson==1.33
 python-daemon==2.0.6
-pyparsing==2.0.1
+pyparsing==2.1.10
 setproctitle==1.1.10
 rstr==2.2.3
+flup==1.0.2

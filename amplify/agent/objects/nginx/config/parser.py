@@ -5,9 +5,9 @@ import re
 from itertools import izip
 
 from pyparsing import (
-    Regex, Keyword, Literal, White, Word, alphanums, CharsNotIn, Forward, Group,
-    Optional, OneOrMore, ZeroOrMore, pythonStyleComment, lineno, LineStart, LineEnd,
-    oneOf, QuotedString, nestedExpr, ParserElement, ParseResults
+    Regex, Keyword, Literal, Word, alphanums, CharsNotIn, Forward, Group,
+    Optional, OneOrMore, ZeroOrMore, pythonStyleComment, lineno,
+    oneOf, QuotedString, nestedExpr, ParseResults
 )
 
 from amplify.agent.common.context import context

@@ -3,8 +3,7 @@ from collections import defaultdict
 
 from hamcrest import *
 
-from amplify.agent.collectors.nginx.accesslog import NginxAccessLogParser
-from amplify.agent.collectors.nginx.accesslog import NginxAccessLogsCollector
+from amplify.agent.collectors.nginx.accesslog import NginxAccessLogParser, NginxAccessLogsCollector
 from test.base import NginxCollectorTestCase
 from test.helpers import collected_metric
 

@@ -327,10 +327,15 @@ class ParserTestCase(BaseTestCase):
         server = http['server']
 
         # ssl
-        for directive in IGNORED_DIRECTIVES:
-            assert_that(server[2], is_not(has_item(directive)))
-        assert_that(server[2], has_item('ssl_certificate'))
-        assert_that(server[2]['ssl_certificate'], equal_to('certs.d/example.com.crt'))
+        for server_dict in server:
+            # check that all server dicts don't have ignored directives
+            for directive in IGNORED_DIRECTIVES:
+                assert_that(server_dict, is_not(has_item(directive)))
+
+            # for specifically the ssl server block, check ssl settings
+            if server_dict.get('server_name') == 'example.com' and 'if' not in server_dict:
+                assert_that(server_dict, has_item('ssl_certificate'))
+                assert_that(server_dict['ssl_certificate'], equal_to('certs.d/example.com.crt'))
 
         ssl_certificates = cfg.ssl_certificates
         assert_that(len(ssl_certificates), equal_to(1))

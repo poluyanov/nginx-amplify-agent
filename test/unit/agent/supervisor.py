@@ -182,3 +182,67 @@ class SupervisorTestCase(RealNginxTestCase):
             nginx_obj = nginx_manager.objects.find_all(types=nginx_manager.types)[0]
 
             assert_that(nginx_obj.filters, has_length(1))
+
+    def test_load_ext_managers(self):
+        supervisor = Supervisor()
+        assert_that(supervisor.object_managers, has_length(0))
+
+        # load regular ones
+        supervisor.init_object_managers()
+        assert_that(supervisor.object_managers, has_length(3))
+
+        # load external ones
+        supervisor.load_ext_managers()
+        assert_that(supervisor.object_managers, has_length(5))
+
+    def test_dont_load_missing_ext_managers(self):
+        old = context.app_config.config['extensions']
+        context.app_config.config['extensions'] = {}
+
+        supervisor = Supervisor()
+        assert_that(supervisor.object_managers, has_length(0))
+
+        # load regular ones
+        supervisor.init_object_managers()
+        assert_that(supervisor.object_managers, has_length(3))
+
+        # load external ones
+        supervisor.load_ext_managers()
+        assert_that(supervisor.object_managers, has_length(3))  # non loaded
+
+        context.app_config.config['extensions'] = old
+
+    def test_dont_load_false_ext_managers(self):
+        old = context.app_config.config['extensions']
+        context.app_config.config['extensions'] = dict(phpfpm=False)
+
+        supervisor = Supervisor()
+        assert_that(supervisor.object_managers, has_length(0))
+
+        # load regular ones
+        supervisor.init_object_managers()
+        assert_that(supervisor.object_managers, has_length(3))
+
+        # load external ones
+        supervisor.load_ext_managers()
+        assert_that(supervisor.object_managers, has_length(3))  # none loaded
+
+        context.app_config.config['extensions'] = old
+
+    def test_dont_load_string_false_ext_managers(self):
+        old = context.app_config.config['extensions']
+        context.app_config.config['extensions'] = dict(phpfpm='False')
+
+        supervisor = Supervisor()
+        assert_that(supervisor.object_managers, has_length(0))
+
+        # load regular ones
+        supervisor.init_object_managers()
+        assert_that(supervisor.object_managers, has_length(3))
+
+        # load external ones
+        supervisor.load_ext_managers()
+        assert_that(supervisor.object_managers, has_length(3))  # none loaded
+
+        context.app_config.config['extensions'] = old
+

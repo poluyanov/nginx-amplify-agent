@@ -19,6 +19,17 @@ RUN apt-get update
 RUN apt-get install -y tar curl nano wget dialog net-tools build-essential
 RUN apt-get install -y --fix-missing nginx
 
+# Install php-fpm and configure
+RUN apt-get update
+RUN apt-get install -y php-fpm
+# add fastcgi_params and php-fpm.conf for nginx
+ADD fastcgi_params /etc/nginx/fastcgi_params
+ADD php-fpm.conf /etc/nginx/conf.d/php-fpm.conf
+# overwrite default www.conf for php7.0-fpm
+ADD php-fpm-www.conf /etc/php/7.0/fpm/pool.d/www.conf
+# add test .php file to /var/www/php-fpm root
+ADD test.php /var/www/php-fpm/test.php
+
 # Install Python and Basic Python Tools
 RUN apt-get install -y python python-dev python-distribute
 RUN wget --no-check-certificate https://bootstrap.pypa.io/ez_setup.py -O - | python
@@ -44,4 +55,4 @@ ADD nginx2.conf /etc/nginx/nginx2.conf
 ADD amplify-agent-test.crt /etc/nginx/certs.d/amplify-agent-test.crt
 ADD amplify-agent-test.key /etc/nginx/certs.d/amplify-agent-test.key
 
-CMD nginx && nginx -c /etc/nginx/nginx2.conf && python /amplify/nginx-amplify-agent.py start --config=/amplify/etc/agent.conf.development && tail -f /amplify/log/agent.log
+CMD nginx && nginx -c /etc/nginx/nginx2.conf && service php7.0-fpm start && python /amplify/nginx-amplify-agent.py start --config=/amplify/etc/agent.conf.development && tail -f /amplify/log/agent.log

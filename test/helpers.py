@@ -2,7 +2,6 @@
 from hamcrest import *
 from hamcrest.core.helpers.wrap_matcher import wrap_matcher
 
-from test.base import BaseTestCase
 from amplify.agent.objects.abstract import AbstractObject
 
 

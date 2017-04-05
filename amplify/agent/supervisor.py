@@ -5,7 +5,6 @@ import time
 import gevent
 
 from threading import current_thread
-from random import randint
 from requests.exceptions import HTTPError
 
 from amplify.agent.common.cloud import CloudResponse, HTTP503Error
@@ -64,10 +63,8 @@ class Supervisor(object):
 
     def init_object_managers(self):
         """
-        Tries to load and create all object managers specified in config
+        Tries to load and create all internal object managers specified in config
         """
-        object_managers_from_local_config = context.app_config['containers']
-
         for object_type in self.object_manager_order:
             try:
                 object_manager_classname = self.MANAGER_CLASS % object_type.title()
@@ -86,6 +83,53 @@ class Supervisor(object):
             except:
                 context.log.error('failed to load %s object manager' % object_type, exc_info=True)
 
+    def load_ext_managers(self):
+        """
+        Tries to load and create all ext managers to be run during primary event loop.
+        """
+        import pkgutil
+        import inspect
+        import amplify.ext as extensions
+        from amplify.agent.managers.abstract import ObjectManager
+        from amplify.agent.common.util.configtypes import boolean
+
+        base_prefix = extensions.__name__ + '.'  # 'amplify.ext.'
+
+        def _recursive_manager_init(inspected_package, prefix=base_prefix):
+            """
+            Takes a package and iterates all of the modules.  If it's a module (e.g. not a package), it will look for
+            ObjectManager class definitions and add and instance of it to the object_managers store.
+
+            :param inspected_package: Package
+            """
+            # iter all modules in package
+            for _, modname, ispkg in pkgutil.iter_modules(inspected_package.__path__):
+                current_loc = prefix + modname
+                # import module
+                mod = __import__(current_loc, fromlist='dummy')
+
+                if ispkg:
+                    # if it is another package, recursively call this function
+                    current_prefix = current_loc + '.'
+                    _recursive_manager_init(mod, prefix=current_prefix)
+                else:
+                    # otherwise if it is a module walk the objects to find ObjectManagers
+                    for obj in mod.__dict__.itervalues():
+                        # if it is a class defintion
+                        if inspect.isclass(obj):
+                            # and it is a subclass of ObjectManager (but not ObjectManager itself)
+                            if issubclass(obj, ObjectManager) and obj.__name__ != ObjectManager.__name__:
+                                # check that the extension is enabled in the config
+                                if obj.ext in context.app_config.get('extensions', {}) and \
+                                        boolean(context.app_config.get('extensions', {}).get(obj.ext, False)):
+                                    # add to object_managers
+                                    self.object_managers[obj.type] = obj()
+                                    context.log.debug('loaded "%s" object manager from %s' % (obj.type, obj))
+                                else:
+                                    context.log.debug('ignored "%s" object manager from %s' % (obj.type, obj))
+
+        _recursive_manager_init(extensions)  # start the recursive loading process
+
     def run(self):
         # get correct pid
         context.set_pid()
@@ -98,6 +142,9 @@ class Supervisor(object):
 
         # init object managers
         self.init_object_managers()
+
+        # load ext managers
+        self.load_ext_managers()
 
         if not self.object_managers:
             context.log.error('no object managers configured, stopping')
@@ -117,10 +164,18 @@ class Supervisor(object):
             try:
                 context.inc_action_id()
 
+                # run internal objects
                 for object_manager_name in self.object_manager_order:
                     object_manager = self.object_managers[object_manager_name]
                     object_manager.run()
 
+                # run exeternal objects
+                external_managers = filter(lambda x: x not in self.object_manager_order, self.object_managers.keys())
+                for object_manager_name in external_managers:
+                    object_manager = self.object_managers[object_manager_name]
+                    object_manager.run()
+
+                # talk to cloud
                 try:
                     if context.objects.root_object:
                         if context.objects.root_object.definition and context.objects.root_object.definition_healthy:

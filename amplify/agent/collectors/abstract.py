@@ -68,6 +68,7 @@ class AbstractCollector(object):
                 else:
                     break
 
+            context.teardown_thread_id()
             raise GreenletExit  # Since kill signals won't work, we raise it ourselves.
         except GreenletExit:
             context.log.debug(

@@ -138,6 +138,13 @@ fi
 
 
 %changelog
+* Mon Apr 3 2017 Mike Belov <dedm@nginx.com> 0.42-1
+- 0.42-1
+- PHP-FPM support
+- Tags support
+- Memory leaks fixes
+- Bug fixes
+
 * Thu Jan 19 2017 Mike Belov <dedm@nginx.com> 0.41-2
 - 0.41-2
 - Updated requests library (fixes some memory leaks)

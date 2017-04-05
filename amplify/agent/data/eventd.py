@@ -30,7 +30,7 @@ class Event(object):
         self.message = message
         self.stamp = int(time.time())
         self.category = 'agent'
-        self.id = hashlib.md5('%s_%s' % (self.message, self.level)).hexdigest()
+        self.id = hashlib.sha256('%s_%s' % (self.message, self.level)).hexdigest()
         self.counter = 1
 
     def inc(self):

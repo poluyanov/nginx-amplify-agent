@@ -20,6 +20,18 @@ RUN apt-get install -y tar curl nano wget dialog net-tools build-essential
 RUN apt-get install -y --fix-missing nginx
 RUN rm -rf  /run && mkdir /run
 
+# Install php-fpm and configure
+RUN apt-get update
+RUN apt-get install -y php5-fpm
+# add fastcgi_params and php-fpm.conf for nginx
+ADD fastcgi_params /etc/nginx/fastcgi_params
+ADD php-fpm.conf /etc/nginx/conf.d/php-fpm.conf
+# overwrite default www.conf for php5.0-fpm
+ADD php-fpm-www.conf /etc/php5/fpm/pool.d/www.conf
+RUN mkdir /run/php/
+# add test .php file to /var/www/php-fpm root
+ADD test.php /var/www/php-fpm/test.php
+
 # Install Python and Basic Python Tools
 RUN apt-get install -y python python-dev python-distribute python-daemon
 RUN wget --no-check-certificate https://bootstrap.pypa.io/ez_setup.py -O - | python

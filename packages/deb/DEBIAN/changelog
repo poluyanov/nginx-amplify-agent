@@ -1,3 +1,12 @@
+nginx-amplify-agent (0.42-1) unstable; urgency=low
+
+  * PHP-FPM support
+  * Tags support
+  * Memory leak fixes
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Mon, 3 Apr 2017 10:00:00 -0800
+
 nginx-amplify-agent (0.41-2) unstable; urgency=low
 
   * Updated requests library (fixes some memory leaks)

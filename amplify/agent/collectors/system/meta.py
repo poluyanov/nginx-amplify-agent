@@ -49,6 +49,7 @@ class SystemMetaCollector(AbstractMetaCollector):
             'type': self.object.type,
             'uuid': self.uuid,
             'os-type': os_name(),
+            'tags': context.tags,
             'network': {'interfaces': [], 'default': None},
             'disk_partitions': [],
             'release': {'name': None, 'version_id': None, 'version': None},

@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 from amplify.agent.common.context import context
 
-from amplify.agent.common.util import host
 from amplify.agent.objects.abstract import AbstractObject
-from amplify.agent.collectors.system.meta import SystemMetaCollector
-from amplify.agent.collectors.system.metrics import SystemMetricsCollector
 from amplify.agent.data.eventd import INFO
 
 __author__ = "Mike Belov"

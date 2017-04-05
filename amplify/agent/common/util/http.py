@@ -83,7 +83,7 @@ class HTTPClient(Singleton):
         payload = zlib.compress(payload, self.gzip) if self.gzip else payload
 
         start_time = time.time()
-        result, http_code = '', 500
+        result, http_code, amplify_id = '', 500, None
         try:
             if method == 'get':
                 r = self.session.get(
@@ -103,6 +103,7 @@ class HTTPClient(Singleton):
             http_code = r.status_code
             r.raise_for_status()
             result = r.json() if json else r.text
+            amplify_id = r.headers.get('X-Amplify-ID', None)
             return result
         except Exception as e:
             if log:
@@ -114,7 +115,15 @@ class HTTPClient(Singleton):
             log_method = context.log.info if log else context.log.debug
             context.log.debug(result)
             log_method(
-                "%s %s %s %s %s %.3f" % (method, url, http_code, len(payload), len(result), end_time - start_time)
+                '[%s] %s %s %s %s %s %.3f' % (
+                    amplify_id,
+                    method,
+                    url,
+                    http_code,
+                    len(payload),
+                    len(result),
+                    end_time - start_time
+                )
             )
 
     def post(self, url, data=None, timeout=None, json=True):
