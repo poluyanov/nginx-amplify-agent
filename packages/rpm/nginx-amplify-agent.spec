@@ -138,6 +138,10 @@ fi
 
 
 %changelog
+* Mon Apr 17 2017 Mike Belov <dedm@nginx.com> 0.42-2
+- 0.42-2
+- PHP-FPM bug fixes
+
 * Mon Apr 3 2017 Mike Belov <dedm@nginx.com> 0.42-1
 - 0.42-1
 - PHP-FPM support

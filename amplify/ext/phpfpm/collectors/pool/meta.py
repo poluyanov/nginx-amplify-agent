@@ -32,6 +32,7 @@ class PHPFPMPoolMetaCollector(AbstractMetaCollector):
             'name': self.object.name,
             'parent_local_id': self.object.parent_local_id,
             'listen': self.object.listen,
+            'flisten': self.object.flisten,
             'status_path': self.object.status_path,
             'can_have_children': False
         }

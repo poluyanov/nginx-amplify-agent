@@ -107,7 +107,7 @@ class PHPFPMObject(AbstractObject):
                 pool['status_path'] = status_path
             except Exception as e:
                 exception_name = e.__class__.__name__
-                context.log.error('failed to parse php-fpm pool config %s due to %s' % (self.conf_path, exception_name))
+                context.log.error('failed to parse php-fpm pool config %s due to %s' % (filepath, exception_name))
                 context.log.debug('additional info:', exc_info=True)
             else:
                 # only add pool if there is no error and if pool is properly

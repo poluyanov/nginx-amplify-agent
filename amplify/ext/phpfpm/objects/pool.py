@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import re
 
+from amplify.agent.common.context import context
+from amplify.agent.common.util.host import hostname
 from amplify.ext.abstract.object import AbstractObject
 
 from amplify.ext.phpfpm.collectors.pool.meta import PHPFPMPoolMetaCollector
@@ -17,6 +20,9 @@ __maintainer__ = "Grant Hulegaard"
 __email__ = "grant.hulegaard@nginx.com"
 
 
+_LISTEN_RE = re.compile(r'(\$\w+)')
+
+
 class PHPFPMPoolObject(AbstractObject):
     type = 'phpfpm_pool'
 
@@ -26,6 +32,7 @@ class PHPFPMPoolObject(AbstractObject):
         # cached values
         self._name = self.data['name']
         self._local_id = self.data.get('local_id')
+        self._flisten = None
 
         # attributes
         self.parent_local_id = self.data['parent_local_id']
@@ -39,6 +46,41 @@ class PHPFPMPoolObject(AbstractObject):
     @property
     def local_id_args(self):
         return self.parent_local_id, self.name
+
+    @property
+    def display_name(self):
+        # override abstrawct version for user-friendliness.
+        return "phpfpm %s @ %s" % (self.name, hostname())
+
+    @property
+    def flisten(self):
+        """
+        This is a helper to take raw "listen" strings from phpfpm configs and attempt to format them into something 
+        usable.  This is primarily the replacing of "$pool" variable.
+        """
+        if self._flisten is not None:
+            return self._flisten
+
+        SUPPORTED_VARS = {
+            '$pool': self.name,
+        }
+
+        formatted_listen = self.listen
+
+        for m in _LISTEN_RE.finditer(self.listen):
+            fpm_var = m.group(1)  # e.g. "$pool"
+
+            if fpm_var in SUPPORTED_VARS:
+                formatted_listen = formatted_listen.replace(fpm_var, SUPPORTED_VARS[fpm_var])
+            else:
+                context.log.debug(
+                    'found unsupported phpfpm conf variable "%s" in "%s" pool listen: "%s"' %
+                    (fpm_var, self.name, self.listen)
+                )
+
+        self._flisten = formatted_listen
+
+        return self._flisten
 
     def _setup_meta_collector(self):
         self.collectors.append(

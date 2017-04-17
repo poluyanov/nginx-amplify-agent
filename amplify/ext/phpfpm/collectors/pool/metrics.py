@@ -37,7 +37,7 @@ class PHPFPMPoolMetricsCollector(AbstractMetricsCollector):
         )
 
     def _setup_status_page(self):
-        listen = self.object.listen
+        listen = self.object.flisten
 
         if listen.startswith('/'):
             return PHPFPMStatus(path=listen, url=self.object.status_path)

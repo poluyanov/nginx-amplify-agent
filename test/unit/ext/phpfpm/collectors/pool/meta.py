@@ -57,6 +57,7 @@ class PHPFPMPoolMetaCollectorTestCase(BaseTestCase):
         assert_that(phpfpm_pool_meta_collector.meta, equal_to(
             {
                 'listen': '/run/php/php7.0-fpm.sock',
+                'flisten': '/run/php/php7.0-fpm.sock',
                 'hostname': 'hostname.nginx',
                 'local_id': 124,
                 'name': 'www',
@@ -70,3 +71,41 @@ class PHPFPMPoolMetaCollectorTestCase(BaseTestCase):
 
         # check that it matches the object metad
         assert_that(phpfpm_pool_meta_collector.meta, equal_to(self.phpfpm_pool_obj.metad.current))
+
+    def test_collect_flisten(self):
+        phpfpm_pool_obj = PHPFPMPoolObject(
+            local_id=124,
+            parent_local_id=123,
+            status_path='/status',
+            name='www',
+            file='/etc/php5/fpm/pool.d/www.conf',
+            listen='/run/php/$pool.sock'
+        )
+        phpfpm_pool_meta_collector = PHPFPMPoolMetaCollector(
+            object=phpfpm_pool_obj,
+            interval=self.phpfpm_pool_obj.intervals['meta']
+        )
+        assert_that(phpfpm_pool_meta_collector, not_none())
+        assert_that(phpfpm_pool_meta_collector.meta, equal_to({}))  # make sure meta is empty
+
+        # collect and assert that meta is not empty
+        phpfpm_pool_meta_collector.collect()
+
+        # check value
+        assert_that(phpfpm_pool_meta_collector.meta, equal_to(
+            {
+                'listen': '/run/php/$pool.sock',
+                'flisten': '/run/php/www.sock',
+                'hostname': 'hostname.nginx',
+                'local_id': 124,
+                'name': 'www',
+                'parent_local_id': 123,
+                'status_path': '/status',
+                'type': 'phpfpm_pool',
+                'root_uuid': None,
+                'can_have_children': False
+            }
+        ))
+
+        # check that it matches the object metad
+        assert_that(phpfpm_pool_meta_collector.meta, equal_to(phpfpm_pool_obj.metad.current))

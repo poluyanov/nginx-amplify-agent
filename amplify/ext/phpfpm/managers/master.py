@@ -97,7 +97,7 @@ class PHPFPMManager(ObjectManager):
                         self.objects.unregister(current_obj)  # unregister old object
                         current_obj.stop()  # stop old object
 
-                        self.objects.register(new_obj)
+                        self.objects.register(new_obj, parent_id=self.objects.root_id)
             except psutil.NoSuchProcess:
                 context.log.debug('phpfpm is restarting/reloading, pids are changing, agent is waiting')
 
