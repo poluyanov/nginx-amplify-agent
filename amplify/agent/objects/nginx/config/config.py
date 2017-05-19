@@ -56,19 +56,28 @@ class NginxConfig(object):
         self.directories = {}
         self.directory_map = {}
         self.index = []
+        self.subtree = {}
         self.ssl_certificates = {}
+        self.parser_ssl_certificates = []
         self.parser_errors = []
         self.stub_status_urls = []
         self.plus_status_external_urls = []
         self.plus_status_internal_urls = []
-        self.parser = NginxConfigParser(filename)
+        self.parser = None
         self.wait_until = 0
+
+    def _setup_parser(self):
+        self.parser = NginxConfigParser(filename=self.filename)
+
+    def _teardown_parser(self):
+        self.parser = None
 
     def full_parse(self):
         context.log.debug('parsing full tree of %s' % self.filename)
 
         # parse raw data
         try:
+            self._setup_parser()
             self.parser.parse()
             self._handle_parse()
         except Exception as e:
@@ -93,10 +102,15 @@ class NginxConfig(object):
         self.directories = self.parser.directories
         self.directory_map = self.parser.directory_map
         self.index = self.parser.index
+        self.subtree = self.parser.simplify()
+        self.parser_ssl_certificates = self.parser.ssl_certificates
         self.parser_errors = self.parser.errors
 
+        # now that we have all the things we need from parser, we can tear it down
+        self._teardown_parser()
+
         # go through and collect all logical data
-        self.__collect_data(subtree=self.parser.simplify())
+        self.__collect_data(subtree=self.subtree)
 
     def collect_structure(self, include_ssl_certs=False):
         """
@@ -105,9 +119,18 @@ class NginxConfig(object):
         :param include_ssl_certs: bool - include ssl certs  or not
         :return: {} - dict of files
         """
+        # if self.parser is None, set it up
+        none_parser = bool(self.parser is None)
+        if none_parser:
+            self._setup_parser()
+
         files, directories = self.parser.get_structure(include_ssl_certs=include_ssl_certs)
         context.log.debug('found %s files for %s' % (len(files.keys()), self.filename))
         context.log.debug('found %s directories for %s' % (len(directories.keys()), self.filename))
+
+        # always teardown the parser
+        self._teardown_parser()
+
         return files, directories
 
     def total_size(self):
@@ -371,12 +394,12 @@ class NginxConfig(object):
 
         :return: float run time
         """
-        if not self.parser.ssl_certificates:
+        if not self.parser_ssl_certificates:
             return
 
         start_time = time.time()
 
-        for cert_filename in set(self.parser.ssl_certificates):
+        for cert_filename in set(self.parser_ssl_certificates):
             if cert_filename not in self.ssl_certificates:
                 ssl_analysis_result = ssl_analysis(cert_filename)
                 if ssl_analysis_result:

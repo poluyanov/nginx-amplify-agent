@@ -41,7 +41,7 @@ class PHPFPMPoolMetricsCollector(AbstractMetricsCollector):
 
         if listen.startswith('/'):
             return PHPFPMStatus(path=listen, url=self.object.status_path)
-        elif listen.contains(':'):
+        elif ':' in listen:
             host, port = listen.split(':')
             return PHPFPMStatus(host=host, port=int(port), url=self.object.status_path)
 

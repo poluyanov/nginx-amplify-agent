@@ -64,6 +64,8 @@ class AbstractObject(object):
         self._definition_hash = None
         self._local_id = None
 
+        self.name = self.data.get('name', None)
+
     @abc.abstractproperty
     def definition(self):
         return {'id': self.id, 'type': self.type}
@@ -124,6 +126,20 @@ class AbstractObject(object):
         if len(local_id_args):
             args = map(str, local_id_args)
             return hashlib.sha256('_'.join(args)).hexdigest()
+
+    @property
+    def display_name(self):
+        """
+        Generic attribute wrapper for returning a user-friendly/frontend label for an object.
+        """
+
+        # TOOD: We should clean up and unify our container detection.
+        sysidentifier = context.app_config['credentials']['imagename'] or context.hostname
+
+        if self.name is not None:
+            return "%s %s @ %s" % (self.type, self.name, sysidentifier)
+        else:
+            return "%s @ %s" % (self.type, sysidentifier)
 
     def start(self):
         """

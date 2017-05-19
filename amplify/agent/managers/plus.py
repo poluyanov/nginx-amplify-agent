@@ -28,15 +28,14 @@ class PlusManager(ObjectManager):
         # Find nginx_plus
         plus_nginxs = filter(lambda x: x.plus_status_enabled, context.objects.find_all(types=('nginx',)))
 
-        existing_hashes = []
+        existing_hashes = map(lambda x: x.local_id, context.objects.find_all(types=self.types))
+
         discovered_hashes = []
         for nginx in plus_nginxs:
             plus_status, stamp = context.plus_cache.get_last(nginx.plus_status_internal_url)
 
             if not plus_status or not stamp:
                 continue  # skip nginx plus's that haven't collected their first plus_status payload
-
-            existing_hashes = map(lambda x: x.local_id, self.objects.find_all(parent_id=nginx.id))
 
             plus_objects = {
                 'caches': NginxCacheObject,
@@ -58,8 +57,7 @@ class PlusManager(ObjectManager):
 
         dropped_hashes = filter(lambda x: x not in discovered_hashes, existing_hashes)
         if len(dropped_hashes):
-            for nginx in plus_nginxs:
-                for obj in self.objects.find_all(parent_id=nginx.id):
-                    if obj.local_id in dropped_hashes:
-                        obj.stop()
-                        self.objects.unregister(obj)
+            for obj in self.objects.find_all(types=self.types):
+                if obj.local_id in dropped_hashes:
+                    obj.stop()
+                    self.objects.unregister(obj)

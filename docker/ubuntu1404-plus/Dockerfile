@@ -28,7 +28,8 @@ RUN printf "deb https://plus-pkgs.nginx.com/ubuntu `lsb_release -cs` nginx-plus\
 RUN apt-get update && apt-get install -y nginx-plus
 
 # Install basic applications
-RUN apt-get install -y --fix-missing tar curl nano wget dialog net-tools build-essential apt-transport-https
+RUN apt-get install -y --fix-missing tar curl nano wget dialog net-tools build-essential 
+# RUN apt-get install -y --fix-missing apt-transport-https
 
 # Install Python and Basic Python Tools
 RUN apt-get install -y python python-dev python-distribute

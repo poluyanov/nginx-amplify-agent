@@ -19,6 +19,7 @@ class PlusCache(Singleton):
     """
 
     def __init__(self):
+        super(PlusCache, self).__init__()
         self.caches = defaultdict(deque)
 
     def __getitem__(self, plus_url):

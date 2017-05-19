@@ -11,7 +11,9 @@ public_key_url="https://nginx.org/keys/nginx_signing.key"
 agent_conf_path="/etc/amplify-agent"
 agent_conf_file="${agent_conf_path}/agent.conf"
 amplify_hostname=""
-api_url="https://receiver.amplify.nginx.com:443/ping/"
+api_url="https://receiver.amplify.nginx.com:443"
+api_ping_url="${api_url}/ping/"
+api_receiver_url="${api_url}/1.3"
 public_ntp="north-america.pool.ntp.org"
 nginx_conf_file="/etc/nginx/nginx.conf"
 
@@ -441,9 +443,16 @@ if [ -n "${AMPLIFY_HOSTNAME}" ]; then
     amplify_hostname="${AMPLIFY_HOSTNAME}"
 fi
 
+if [ -n "${API_URL}" ]; then
+    api_url="${API_URL}"
+    api_ping_url="${api_url}/ping/"
+    api_receiver_url="${api_url}/1.3"
+fi
+
 ${sudo_cmd} rm -f ${agent_conf_file} && \
-${sudo_cmd} sh -c "sed -e 's/api_key.*$/api_key = $api_key/' \
-		       -e 's/hostname.*$/hostname = $amplify_hostname/' \
+${sudo_cmd} sh -c "sed -e 's|api_key.*$|api_key = $api_key|' \
+                       -e 's|api_url.*$|api_url = $api_receiver_url|' \
+                       -e 's|hostname.*$|hostname = $amplify_hostname|' \
 	${agent_conf_file}.default > \
 	${agent_conf_file}" && \
 ${sudo_cmd} chmod 644 ${agent_conf_file} && \
@@ -541,7 +550,7 @@ fi
 if [ -n "${downloader}" ]; then
     printf "\033[32m ${step}. Checking connectivity to the receiver ...\033[0m"
 
-    if ${downloader} ${api_url} | grep 'pong' >/dev/null 2>&1; then
+    if ${downloader} ${api_ping_url} | grep 'pong' >/dev/null 2>&1; then
 	printf "\033[32m ok.\033[0m\n"
     else
 	printf "\033[31m failed to connect to the receiver! (check\033[0m https://git.io/vKk0I)\n"

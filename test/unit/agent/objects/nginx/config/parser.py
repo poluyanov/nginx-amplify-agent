@@ -33,6 +33,7 @@ quoted_location_with_semicolon = os.getcwd() + '/test/fixtures/nginx/quoted_loca
 complex_add_header = os.getcwd() + '/test/fixtures/nginx/complex_add_header/nginx.conf'
 escaped_string_config = os.getcwd() + '/test/fixtures/nginx/custom/escaped_string.conf'
 tabs_everywhere = os.getcwd() + '/test/fixtures/nginx/tabs/nginx.conf'
+more_clean_headers = os.getcwd() + '/test/fixtures/nginx/more_clean_headers/nginx.conf'
 
 
 class ParserTestCase(BaseTestCase):
@@ -418,5 +419,9 @@ class ParserTestCase(BaseTestCase):
     def test_tabs_everywhere(self):
         cfg = NginxConfigParser(tabs_everywhere)
         cfg.parse()
+        assert_that(cfg.errors, has_length(0))
 
+    def test_more_clean_headers(self):
+        cfg = NginxConfigParser(more_clean_headers)
+        cfg.parse()
         assert_that(cfg.errors, has_length(0))

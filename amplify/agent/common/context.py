@@ -36,8 +36,8 @@ class Context(Singleton):
 
         self.set_pid()
 
-        self.version_major = 0.42
-        self.version_build = 2
+        self.version_major = 0.43
+        self.version_build = 1
         self.version = '%.2f-%s' % (self.version_major, self.version_build)
         self.environment = None
         self.imagename = None
@@ -51,6 +51,7 @@ class Context(Singleton):
         self.ids = {}
         self.action_ids = {}
         self.cloud_restart = False  # Handle improper duplicate logging of start/stop events.
+        self.freeze_api_url = False
 
         self.objects = None
         self.top_object = None  # TODO: Remove top_object entirely in favor of just top_object_id.
@@ -58,12 +59,14 @@ class Context(Singleton):
 
         self.plus_cache = None
 
+        self.nginx_configs = None
+
         self.start_time = int(time.time())
 
         # ring 0 thread_id set up and protect
         self.setup_thread_id()
         self.supervisor_thread_id = self.ids.keys()[0]
-        
+
         self.setup_environment()
 
         self.backpressure_time = 0
@@ -88,6 +91,7 @@ class Context(Singleton):
         self._setup_http_client()
         self._setup_object_tank()
         self._setup_plus_cache()
+        self._setup_nginx_config_tank()
         self._setup_container_details()
 
     def _setup_app_config(self, **kwargs):
@@ -99,6 +103,11 @@ class Context(Singleton):
             self.app_config = configreader.read('app', config_file=kwargs.get('config_file'))
         else:
             configreader.CONFIG_CACHE['app'] = self.app_config
+
+        # if the api_url was set in the config and isn't from our receiver's domain then never overwrite it
+        api_url = self.app_config.get('cloud', {}).get('api_url', '') or ''
+        from_us = api_url.startswith('https://receiver.amplify.nginx.com')
+        self.freeze_api_url = bool(api_url) and not from_us
 
         if kwargs.get('pid_file'):  # If pid_file given in setup, then assume agent running in daemon mode.
             self.app_config['daemon']['pid'] = kwargs.get('pid_file')
@@ -184,6 +193,10 @@ class Context(Singleton):
         from amplify.agent.tanks.plus_cache import PlusCache
         self.plus_cache = PlusCache()
 
+    def _setup_nginx_config_tank(self):
+        from amplify.agent.tanks.nginx_config import NginxConfigTank
+        self.nginx_configs = NginxConfigTank()
+
     def _setup_container_details(self):
         from amplify.agent.common.util import container
         self.container_type = container.container_environment()
@@ -214,7 +227,7 @@ class Context(Singleton):
                 )
             )
             return
-    
+
         try:
             del self.ids[thread_id]
         except KeyError:

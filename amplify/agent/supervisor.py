@@ -309,6 +309,10 @@ class Supervisor(object):
                     del object_manager.object_configs[obj_id]
                     changed_object_managers.add(object_type)
 
+        # don't change api_url if a custom url was set by the user in the agent config
+        if context.freeze_api_url:
+            cloud_response.config.get('cloud', {}).pop('api_url', None)
+
         # global config changes
         config_changed = context.app_config.apply(cloud_response.config)
 

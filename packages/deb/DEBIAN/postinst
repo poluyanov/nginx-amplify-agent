@@ -30,10 +30,17 @@ else
         service amplify-agent stop > /dev/null 2>&1 < /dev/null
     fi
 
-    # Change API URL to 1.3
     if [ -f "${agent_conf_file}" ]; then
+        # Change API URL to 1.3
 	    sh -c "sed -i.old 's/api_url.*receiver.*$/api_url = https:\/\/receiver.amplify.nginx.com:443\/1.3/' \
 	    ${agent_conf_file}"
+
+	    # Add PHP-FPM to config file
+        if ! grep -i phpfpm "${agent_conf_file}" > /dev/null 2>&1 ; then
+            sh -c "echo >> ${agent_conf_file}" && \
+            sh -c "echo '[extensions]' >> ${agent_conf_file}" && \
+            sh -c "echo 'phpfpm = True' >> ${agent_conf_file}"
+        fi
     else
         test -f "${agent_conf_file}.default" && \
         cp -p "${agent_conf_file}.default" "${agent_conf_file}" && \

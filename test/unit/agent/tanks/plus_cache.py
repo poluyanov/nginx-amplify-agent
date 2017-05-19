@@ -28,6 +28,7 @@ class PlusCacheTestCase(BaseTestCase):
     def teardown_method(self, method):
         self.plus_cache = None
         context.plus_cache = PlusCache()
+
         super(PlusCacheTestCase, self).teardown_method(method)
 
     def test_init(self):

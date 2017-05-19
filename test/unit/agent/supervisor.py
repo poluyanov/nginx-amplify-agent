@@ -246,3 +246,28 @@ class SupervisorTestCase(RealNginxTestCase):
 
         context.app_config.config['extensions'] = old
 
+    def test_freeze_api_url_true(self):
+        context.freeze_api_url = True
+        supervisor = Supervisor()
+        with requests_mock.mock() as m:
+            m.post(
+                '%s/%s/agent/' % (DEFAULT_API_URL, DEFAULT_API_KEY),
+                text='{"config": {"cloud": {"talk_interval": 120.0, "api_url": "https://receiver.amplify.nginx.com:443/1.3", "push_interval": 60.0, "api_timeout": 10.0}, "containers": {"plus": {"poll_intervals": {"metrics": 20.0, "meta": 60.0, "discover": 10.0}}, "nginx": {"parse_delay": 60.0, "max_test_duration": 30.0, "poll_intervals": {"metrics": 20.0, "configs": 20.0, "meta": 60.0, "logs": 10.0, "discover": 10.0}}, "system": {"poll_intervals": {"metrics": 20.0, "meta": 60.0, "discover": 10.0}}}}, "objects": [{"object": {"type": "nginx", "root_uuid": "6789abcde", "local_id": "b636d4376dea15405589692d3c5d3869ff3a9b26b0e7bb4bb1aa7e658ace1437"}, "config": {"upload_ssl": true}, "filters": [{"metric": "nginx.http.method.post", "filter_rule_id": 9, "data": [["$request_uri", "~", "/api/timeseries"]]}]}], "messages": [], "versions": {"current": 0.41, "old": 0.26, "obsolete": 0.21}}'
+            )
+            # check that talking to cloud changes the api_url
+            assert_that(context.app_config['cloud']['api_url'], equal_to(DEFAULT_API_URL))
+            supervisor.talk_to_cloud(force=True)
+            assert_that(context.app_config['cloud']['api_url'], equal_to(DEFAULT_API_URL))
+
+    def test_freeze_api_url_false(self):
+        context.freeze_api_url = False
+        supervisor = Supervisor()
+        with requests_mock.mock() as m:
+            m.post(
+                '%s/%s/agent/' % (DEFAULT_API_URL, DEFAULT_API_KEY),
+                text='{"config": {"cloud": {"talk_interval": 120.0, "api_url": "https://receiver.amplify.nginx.com:443/1.3", "push_interval": 60.0, "api_timeout": 10.0}, "containers": {"plus": {"poll_intervals": {"metrics": 20.0, "meta": 60.0, "discover": 10.0}}, "nginx": {"parse_delay": 60.0, "max_test_duration": 30.0, "poll_intervals": {"metrics": 20.0, "configs": 20.0, "meta": 60.0, "logs": 10.0, "discover": 10.0}}, "system": {"poll_intervals": {"metrics": 20.0, "meta": 60.0, "discover": 10.0}}}}, "objects": [{"object": {"type": "nginx", "root_uuid": "6789abcde", "local_id": "b636d4376dea15405589692d3c5d3869ff3a9b26b0e7bb4bb1aa7e658ace1437"}, "config": {"upload_ssl": true}, "filters": [{"metric": "nginx.http.method.post", "filter_rule_id": 9, "data": [["$request_uri", "~", "/api/timeseries"]]}]}], "messages": [], "versions": {"current": 0.41, "old": 0.26, "obsolete": 0.21}}'
+            )
+            # check that talking to cloud does not change the api_url
+            assert_that(context.app_config['cloud']['api_url'], equal_to(DEFAULT_API_URL))
+            supervisor.talk_to_cloud(force=True)
+            assert_that(context.app_config['cloud']['api_url'], equal_to('https://receiver.amplify.nginx.com:443/1.3'))

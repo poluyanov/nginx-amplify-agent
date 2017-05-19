@@ -109,10 +109,17 @@ elif [ $1 -eq 2 ] ; then
         service amplify-agent stop > /dev/null 2>&1 < /dev/null
     fi
 
-    # Change API URL to 1.3
     if [ -f "%{agent_conf_file}" ]; then
+        # Change API URL to 1.3
 	    sh -c "sed -i.old 's/api_url.*receiver.*$/api_url = https:\/\/receiver.amplify.nginx.com:443\/1.3/' \
 	    %{agent_conf_file}"
+
+	    # Add PHP-FPM to config file
+	    if ! grep -i phpfpm "%{agent_conf_file}" > /dev/null 2>&1 ; then
+            sh -c "echo >> %{agent_conf_file}" && \
+            sh -c "echo '[extensions]' >> %{agent_conf_file}" && \
+            sh -c "echo 'phpfpm = True' >> %{agent_conf_file}"
+        fi
     else
         test -f "%{agent_conf_file}.default" && \
         cp -p "%{agent_conf_file}.default" "%{agent_conf_file}" && \
@@ -138,6 +145,12 @@ fi
 
 
 %changelog
+* Thu May 18 2017 Mike Belov <dedm@nginx.com> 0.43-1
+- 0.43-1
+- PHP-FPM bug fixes
+- Memory leak fixes
+- Bug fixes
+
 * Mon Apr 17 2017 Mike Belov <dedm@nginx.com> 0.42-2
 - 0.42-2
 - PHP-FPM bug fixes
@@ -146,7 +159,7 @@ fi
 - 0.42-1
 - PHP-FPM support
 - Tags support
-- Memory leaks fixes
+- Memory leak fixes
 - Bug fixes
 
 * Thu Jan 19 2017 Mike Belov <dedm@nginx.com> 0.41-2

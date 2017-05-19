@@ -102,7 +102,7 @@ class NginxMetaCollectorTestCase(RealNginxTestCase):
         assert_that(nginx_obj.metad.current, contains_inanyorder(
             'type', 'local_id', 'root_uuid', 'running', 'stub_status_enabled', 'status_module_enabled', 'ssl',
             'stub_status_url', 'plus_status_url', 'version', 'plus', 'configure', 'packages', 'path',
-            'built_from_source', 'parent_hostname', 'start_time', 'pid'
+            'built_from_source', 'parent_hostname', 'start_time', 'pid', 'display_name'
         ))
 
     @container_test
@@ -119,5 +119,5 @@ class NginxMetaCollectorTestCase(RealNginxTestCase):
         assert_that(nginx_obj.metad.current, contains_inanyorder(
             'type', 'local_id', 'root_uuid', 'running', 'stub_status_enabled', 'status_module_enabled', 'ssl',
             'stub_status_url', 'plus_status_url', 'version', 'plus', 'configure', 'packages', 'path',
-            'built_from_source', 'parent_hostname',
+            'built_from_source', 'parent_hostname', 'display_name'
         ))

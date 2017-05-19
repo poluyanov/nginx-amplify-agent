@@ -15,6 +15,22 @@ __email__ = "arie@nginx.com"
 
 
 class ContextTestCase(BaseTestCase):
+    def test_freeze_api_url(self):
+        # check that if api_url is not set it will not prevent agent from setting api_url from cloud
+        context.app_config['cloud']['api_url'] = ''
+        context.setup(app='test', app_config=context.app_config)
+        assert_that(context.freeze_api_url, equal_to(False))
+
+        # check that an api_url from our receiver's domain will not prevent agent from setting api_url from cloud
+        context.app_config['cloud']['api_url'] = 'https://receiver.amplify.nginx.com:443/1.1'
+        context.setup(app='test', app_config=context.app_config)
+        assert_that(context.freeze_api_url, equal_to(False))
+
+        # check that a custom api_url will prevent agent from setting api_url from cloud
+        context.app_config['cloud']['api_url'] = 'http://some.other.domain/endpoint/'
+        context.setup(app='test', app_config=context.app_config)
+        assert_that(context.freeze_api_url, equal_to(True))
+
     def test_uuid(self):
         assert_that(context.app_config['credentials'], has_entry('imagename', none()))
         assert_that(context.app_config['credentials'], has_entry('hostname', DEFAULT_HOST))

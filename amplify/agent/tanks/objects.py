@@ -229,7 +229,7 @@ class ObjectsTank(Singleton):
             obj_id = obj.id if obj else obj_id
 
         if not obj_id or obj_id not in self.objects:
-            context.default_log.error('Failed to find parent object (obj_id: %s)' % obj_id)
+            context.default_log.error('Failed to find parent object, object not found (obj_id: %s)' % obj_id)
             return
 
         found_parent_id = None

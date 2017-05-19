@@ -38,5 +38,3 @@ def do_cprofile(func):
             context.log.debug('dumped run to %s' % dump_file)
             profile.dump_stats(dump_file)
     return profiled_func
-
-

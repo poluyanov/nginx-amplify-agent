@@ -85,7 +85,6 @@ class NginxManager(ObjectManager):
                         config_collector = current_obj.collectors[0]
                         data.update(
                             config_data=dict(
-                                config=current_obj.config,
                                 previous=config_collector.previous
                             )
                         )
@@ -145,6 +144,7 @@ class NginxManager(ObjectManager):
                                 children=True,
                                 include_self=False
                         ):
+                            child_obj.stop()
                             self.objects.unregister(obj=child_obj)
 
                         self.objects.objects[current_obj.id] = new_obj
@@ -182,6 +182,9 @@ class NginxManager(ObjectManager):
                 dropped_obj.stop()
                 self.objects.unregister(dropped_obj)
 
+        # manage nginx configs
+        self._manage_configs()
+
     @staticmethod
     def _find_all():
         """
@@ -195,7 +198,7 @@ class NginxManager(ObjectManager):
             ps, _ = subp.call(ps_cmd)
             context.log.debug('ps nginx output: %s' % ps)
         except:
-            context.log.error('failed to find running nginx via %s' % ps_cmd)
+            context.log.debug('failed to find running nginx via %s' % ps_cmd)
             context.log.debug('additional info:', exc_info=True)
             if context.objects.root_object:
                 context.objects.root_object.eventd.event(
@@ -281,3 +284,16 @@ class NginxManager(ObjectManager):
                 }
                 results.append((definition, description))
         return results
+
+    def _manage_configs(self):
+        # go through existing objects and create the ident tags for their configs
+        existing_object_configs = set()
+        for nginx_obj in self.objects.find_all(types=self.types):
+            existing_object_configs.add((nginx_obj.conf_path, nginx_obj.prefix, nginx_obj.bin_path))
+
+        # create a set of the existing ident tags
+        configs = set(context.nginx_configs.keys())
+
+        # for the idents in the tank but not being referenced by existing nginx objects, remove them
+        for filename, prefix, bin_path in configs.difference(existing_object_configs):
+            del context.nginx_configs[(filename, prefix, bin_path)]

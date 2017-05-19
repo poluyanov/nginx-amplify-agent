@@ -40,6 +40,7 @@ class NginxMetaCollector(AbstractMetaCollector):
             'local_id': self.object.local_id,
             'root_uuid': None,
             'running': True,
+            'display_name': self.object.display_name,
             'stub_status_enabled': self.object.stub_status_enabled,
             'status_module_enabled': self.object.plus_status_enabled,
             'stub_status_url': self.object.stub_status_url,

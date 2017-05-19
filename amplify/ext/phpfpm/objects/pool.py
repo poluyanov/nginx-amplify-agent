@@ -30,7 +30,6 @@ class PHPFPMPoolObject(AbstractObject):
         super(PHPFPMPoolObject, self).__init__(**kwargs)
 
         # cached values
-        self._name = self.data['name']
         self._local_id = self.data.get('local_id')
         self._flisten = None
 

@@ -41,7 +41,7 @@ keys = simpleFormatter
 
 [formatter_simpleFormatter]
 format = %(asctime)s [%(process)d] %(action_id)s %(threadName)s %(message)s
-datefmt = 
+datefmt =
 
 [logger_devnull]
 level = DEBUG

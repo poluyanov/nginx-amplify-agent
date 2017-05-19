@@ -4,7 +4,10 @@ from random import randint
 
 __author__ = "Grant Hulegaard"
 __copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
+__credits__ = [
+    "Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov",
+    "Andrew Alexeev", "Grant Hulegaard"
+]
 __license__ = ""
 __maintainer__ = "Grant Hulegaard"
 __email__ = "grant.hulegaard@nginx.com"
@@ -18,8 +21,8 @@ MAXIMUM_TIMEOUT = 3600  # seconds
 
 def exponential_delay(n):
     """
-    Simple algorithm that will evenly distribute agent HTTP delays such that overall Agent reports to backend (req/s)
-    exponentially decay.
+    Simple algorithm that will evenly distribute agent HTTP delays such that
+    overall Agent reports to backend (req/s) exponentially decay.
 
     :param n: Int Number of periods/fails
     :return: Int Number of seconds for agent to delay before next HTTP request.
@@ -27,7 +30,10 @@ def exponential_delay(n):
     if n < 1:
         return 0
 
-    exponential_limit = (1.0/EXPONENTIAL_COEFFICIENT) * TIMEOUT_PERIOD * (EXPONENTIAL_COEFFICIENT ** n)
+    exponential_limit = \
+        (1.0/EXPONENTIAL_COEFFICIENT) * \
+        TIMEOUT_PERIOD * \
+        (EXPONENTIAL_COEFFICIENT ** n)
     period_size = min(exponential_limit, MAXIMUM_TIMEOUT)
 
     return randint(0, period_size - 1)

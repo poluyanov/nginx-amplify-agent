@@ -48,3 +48,55 @@ class PlusManagerTestCase(RealNginxTestCase):
         plus_manager = PlusManager()
         plus_manager._discover_objects()
         assert_that(plus_manager.objects.find_all(types=plus_manager.types), has_length(2))
+
+    @nginx_plus_test
+    def test_rejuvenation(self):
+        nginx_manager = NginxManager()
+        nginx_manager._discover_objects()
+        assert_that(nginx_manager.objects.objects_by_type[nginx_manager.type], has_length(1))
+
+        # get nginx object
+        nginx_obj = nginx_manager.objects.objects[nginx_manager.objects.objects_by_type[nginx_manager.type][0]]
+
+        # get metrics collector - the third in the list
+        metrics_collector = nginx_obj.collectors[2]
+
+        # run plus status - twice, because counters will appear only on the second run
+        metrics_collector.plus_status()
+        time.sleep(1)
+        metrics_collector.plus_status()
+
+        plus_manager = PlusManager()
+        plus_manager._discover_objects()
+        assert_that(plus_manager.objects.find_all(types=plus_manager.types), has_length(2))
+
+        self.stop_first_nginx()
+
+        nginx_manager = NginxManager()
+        nginx_manager._discover_objects()
+        assert_that(nginx_manager.objects.objects_by_type[nginx_manager.type], has_length(0))
+
+        plus_manager = PlusManager()
+        plus_manager._discover_objects()
+        assert_that(plus_manager.objects.find_all(types=plus_manager.types), has_length(0))
+
+        self.start_first_nginx()
+
+        nginx_manager = NginxManager()
+        nginx_manager._discover_objects()
+        assert_that(nginx_manager.objects.objects_by_type[nginx_manager.type], has_length(1))
+
+        # get nginx object
+        nginx_obj = nginx_manager.objects.objects[nginx_manager.objects.objects_by_type[nginx_manager.type][0]]
+
+        # get metrics collector - the third in the list
+        metrics_collector = nginx_obj.collectors[2]
+
+        # run plus status - twice, because counters will appear only on the second run
+        metrics_collector.plus_status()
+        time.sleep(1)
+        metrics_collector.plus_status()
+
+        plus_manager = PlusManager()
+        plus_manager._discover_objects()
+        assert_that(plus_manager.objects.find_all(types=plus_manager.types), has_length(2))

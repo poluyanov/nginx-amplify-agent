@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import psutil
+
 from collections import defaultdict
 
 from amplify.agent.common.context import context
@@ -9,8 +10,8 @@ from amplify.agent.managers.abstract import ObjectManager
 from amplify.agent.data.eventd import INFO
 
 from amplify.ext.phpfpm.util.ps import PS_CMD, MASTER_PARSER, PS_PARSER
+from amplify.ext.phpfpm.util.ps import LS_CMD, LS_PARSER
 from amplify.ext.phpfpm.objects.master import PHPFPMObject
-
 from amplify.ext.phpfpm import AMPLIFY_EXT_KEY
 
 
@@ -137,7 +138,7 @@ class PHPFPMManager(ObjectManager):
         except Exception as e:
             # log error
             exception_name = e.__class__.__name__
-            context.log.error('failed to find running php-fpm via "%s" due to %s' % (PS_CMD, exception_name))
+            context.log.debug('failed to find running php-fpm via "%s" due to %s' % (PS_CMD, exception_name))
             context.log.debug('additional info:', exc_info=True)
 
             # If there is a root_object defined, log an event to send to the cloud.
@@ -200,10 +201,55 @@ class PHPFPMManager(ObjectManager):
                             'pid': pid,
                             'local_id': local_id
                         })
-
                 # match pool process
                 elif 'pool' in cmd:
                     masters[ppid]['workers'].append(pid)
+
+            # get the bin path for each master (remember that each worker
+            # process will return the bin_path of the master)
+            for master in masters.itervalues():
+                # if bin_path was found before, skip
+                if 'bin_path' in master:
+                    continue
+
+                all_pids = [master['pid']] + master['workers']
+                last_exception = None
+                ls_cmd = LS_CMD % master['pid']
+
+                for pid in all_pids:
+                    ls_cmd = LS_CMD % pid
+                    try:
+                        ls, _ = subp.call(ls_cmd)
+                        context.log.debug('ls "%s" output: %s' % (ls_cmd, ls))
+                    except Exception as e:
+                        last_exception = e
+                    else:
+                        bin_path = LS_PARSER(ls[0])
+
+                        masters[master['pid']].update({
+                            'bin_path': bin_path
+                        })
+
+                        last_exception = None  # clear last exception
+                        break  # once we find one successful bin_path break
+
+                # if no ls was successful...
+                if last_exception:
+                    # ...log error
+                    exception_name = last_exception.__class__.__name__
+                    context.log.error(
+                        'failed to find php-fpm bin path, last attempt: '
+                        '"%s" failed due to %s' %
+                        (ls_cmd, exception_name)
+                    )
+                    context.log.debug('additional info:', exc_info=True)
+
+                    # If there is a root_object defined, log an event to send to the cloud.
+                    if context.objects.root_object:
+                        context.objects.root_object.eventd.event(
+                            level=INFO,
+                            message='php-fpm bin not found'
+                        )
         except Exception as e:
             # log error
             exception_name = e.__class__.__name__

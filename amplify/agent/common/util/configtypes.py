@@ -21,7 +21,7 @@ def boolean(value):
     # skip some overhead if value is already a boolean
     if isinstance(value, bool):
         return value
-    
+
     string_map = {
         'true': True,
         'false': False,
@@ -35,4 +35,3 @@ def boolean(value):
 
     # otherwise just return the language boolean cast result
     return bool(value)
-    

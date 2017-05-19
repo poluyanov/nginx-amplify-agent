@@ -25,9 +25,6 @@ __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
 
 
-tokens_cache = {}
-
-
 IGNORED_DIRECTIVES = [
     'ssl_certificate_key',
     'ssl_client_certificate',
@@ -39,17 +36,17 @@ IGNORED_DIRECTIVES = [
 ]
 
 
-def set_line_number(string, location, tokens):
+def set_line_number(input_string, location, tokens):
     # check and limit CPU usage
     context.check_and_limit_cpu_consumption()
 
     if len(tokens) == 1:
-        line_number = lineno(location, string)
-        tokens_cache[tokens[0]] = line_number
+        line_number = lineno(location, input_string)
+        NginxConfigParser.tokens_cache[tokens[0]] = line_number
         tokens.line_number = line_number
     else:
         for item in tokens:
-            tokens.line_number = tokens_cache.get(item)
+            tokens.line_number = NginxConfigParser.tokens_cache.get(item)
 
 
 class NginxConfigParser(object):
@@ -64,6 +61,7 @@ class NginxConfigParser(object):
 
     Parses single file into json structure
     """
+    tokens_cache = {}
 
     max_size = 20*1024*1024  # 20 mb
 
@@ -108,10 +106,6 @@ class NginxConfigParser(object):
         ~MAP & ~ALIAS & ~PERL_SET & ~IF & ~SET & ~REWRITE & ~SERVER_NAME & ~SUB_FILTER & ~ADD_HEADER
     ) + Word(alphanums + '$_:%?"~<>\/-+.,*()[]"' + "'").setParseAction(set_line_number)
 
-    # For some reason this version from Paul McGuire does not trigger "set_line_number"...but the above does
-    # key = ~(MAP | ALIAS | PERL_SET | IF | SET | REWRITE | SERVER_NAME | SUB_FILTER) + \
-    #     Word(alphanums + '$_:%?"~<>\/-+.,*()[]"' + "'").setParseAction(set_line_number)
-
     # values
     value_one = Regex(r'[^{};]*"[^\";]+"[^{};]*')
     value_two = Regex(r'[^{};]*\'[^\';]+\'')
@@ -131,7 +125,7 @@ class NginxConfigParser(object):
     modifier = oneOf("= ~* ~ ^~")
 
     assignment = (
-        key + Optional(value + Optional(value)) + semicolon
+        key + Optional(OneOrMore(value + Optional(value))) + semicolon
     ).setParseAction(set_line_number)
 
     set = (
@@ -224,9 +218,6 @@ class NginxConfigParser(object):
     SSL_CERTIFICATE_RE = re.compile(r'[^#]*ssl_certificate\s+(?P<cert_file>.*);')
 
     def __init__(self, filename='/etc/nginx/nginx.conf'):
-        global tokens_cache
-        tokens_cache = {}
-
         self.filename = filename
         self.folder = os.path.dirname(self.filename)  # stores path to folder with main config
         self.files = {}  # to prevent cycle files and line indexing
@@ -244,6 +235,7 @@ class NginxConfigParser(object):
         self.directory_errors = []  # for broken directories
 
     def parse(self):
+        NginxConfigParser.tokens_cache = {}
         self.directories, self.files, self.parsed_cache = {}, {}, {}  # drop results from the previous run
         self.tree = self.__logic_parse(self.__pyparse(self.filename))  # parse
         self.construct_directory_map()  # construct a tree of structure

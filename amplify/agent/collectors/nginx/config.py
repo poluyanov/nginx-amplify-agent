@@ -14,8 +14,10 @@ __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
 
-MAX_SIZE_FOR_TEST = 20 * 1024 * 1024 # 20 MB
+
+MAX_SIZE_FOR_TEST = 20 * 1024 * 1024  # 20 MB
 DEFAULT_PARSE_DELAY = 60.0
+
 
 class NginxConfigCollector(AbstractCollector):
     short_name = 'nginx_config'

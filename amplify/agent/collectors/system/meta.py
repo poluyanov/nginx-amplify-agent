@@ -49,6 +49,7 @@ class SystemMetaCollector(AbstractMetaCollector):
             'type': self.object.type,
             'uuid': self.uuid,
             'os-type': os_name(),
+            'display_name': self.object.display_name,
             'tags': context.tags,
             'network': {'interfaces': [], 'default': None},
             'disk_partitions': [],

@@ -58,9 +58,9 @@ class PHPFPMPoolMetaCollectorTestCase(BaseTestCase):
             {
                 'listen': '/run/php/php7.0-fpm.sock',
                 'flisten': '/run/php/php7.0-fpm.sock',
-                'hostname': 'hostname.nginx',
                 'local_id': 124,
                 'name': 'www',
+                'display_name': 'phpfpm www @ hostname.nginx',
                 'parent_local_id': 123,
                 'status_path': '/status',
                 'type': 'phpfpm_pool',
@@ -96,9 +96,9 @@ class PHPFPMPoolMetaCollectorTestCase(BaseTestCase):
             {
                 'listen': '/run/php/$pool.sock',
                 'flisten': '/run/php/www.sock',
-                'hostname': 'hostname.nginx',
                 'local_id': 124,
                 'name': 'www',
+                'display_name': 'phpfpm www @ hostname.nginx',
                 'parent_local_id': 123,
                 'status_path': '/status',
                 'type': 'phpfpm_pool',

@@ -147,6 +147,9 @@ class RealNginxTestCase(BaseTestCase):
     def stop_first_nginx(self):
         subp.call('service nginx stop')
 
+    def start_first_nginx(self):
+        subp.call('service nginx start')
+
     def restart_nginx(self):
         subp.call('service nginx restart')
 

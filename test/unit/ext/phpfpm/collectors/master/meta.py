@@ -30,6 +30,7 @@ class PHPFPMMetaCollectorTestCase(BaseTestCase):
             pid=2,
             cmd='php-fpm: master process (/etc/php5/fpm/php-fpm.conf)',
             conf_path='/etc/php5/fpm/php-fpm.conf',
+            bin_path='/usr/sbin/php-fpm7.0',
             workers=[3, 4]
         )
 
@@ -49,15 +50,17 @@ class PHPFPMMetaCollectorTestCase(BaseTestCase):
         # check value
         assert_that(phpfpm_meta_collector.meta, equal_to(
             {
-                'name': '/etc/php5/fpm/php-fpm.conf',
-                'hostname': 'hostname.nginx',
+                'name': 'master',
+                'display_name': 'phpfpm master @ hostname.nginx',
                 'local_id': 123,
                 'type': 'phpfpm',
                 'workers': 2,
                 'cmd': 'php-fpm: master process (/etc/php5/fpm/php-fpm.conf)',
                 'pid': 2,
                 'conf_path': '/etc/php5/fpm/php-fpm.conf',
-                'root_uuid': None
+                'root_uuid': None,
+                'bin_path': '/usr/sbin/php-fpm7.0',
+                'version': '7.0'
             }
         ))
 

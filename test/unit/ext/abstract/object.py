@@ -23,4 +23,5 @@ class AbstractObjectTestCase(BaseTestCase):
         # Test things only different from standard abstract object (amplify.agent.objects.abstract)
         assert_that(abstract_obj, not_(equal_to(None)))
         assert_that(abstract_obj.definition, equal_to({'type': 'abstract', 'local_id': None, 'root_uuid': None}))
-        assert_that(abstract_obj.name, equal_to('abstract @ hostname.nginx'))
+        assert_that(abstract_obj.name, equal_to(None))
+        assert_that(abstract_obj.display_name, equal_to('abstract @ hostname.nginx'))

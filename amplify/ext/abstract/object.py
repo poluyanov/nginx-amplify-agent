@@ -3,7 +3,6 @@ import abc
 from collections import defaultdict
 
 from amplify.agent.common.context import context
-from amplify.agent.common.util.host import hostname
 from amplify.agent.objects.abstract import AbstractObject as BaseObject
 
 
@@ -46,11 +45,3 @@ class AbstractObject(BaseObject):
     @property
     def definition(self):
         return {'type': self.type, 'local_id': self.local_id, 'root_uuid': self.root_uuid}
-
-    @property
-    def name(self):
-        """
-        Generic attribute wrapper for returning object names.  Has a sensible default if private "._name" attribute is
-        not defined.
-        """
-        return self._name if getattr(self, "_name", None) is not None else "%s @ %s" % (self.type, hostname())

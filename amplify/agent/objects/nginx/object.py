@@ -56,10 +56,8 @@ class NginxObject(AbstractObject):
 
         # nginx config
         if 'config_data' in self.data:
-            self.config = self.data['config_data']['config']
             self._restore_config_collector(self.data['config_data']['previous'])
         else:
-            self.config = NginxConfig(self.conf_path, prefix=self.prefix, binary=self.bin_path)
             self._setup_config_collector()
 
         # plus status
@@ -81,6 +79,10 @@ class NginxObject(AbstractObject):
     def definition(self):
         # Type is hard coded so it is not different from ContainerNginxObject.
         return {'type': 'nginx', 'local_id': self.local_id, 'root_uuid': self.root_uuid}
+
+    @property
+    def config(self):
+        return context.nginx_configs[(self.conf_path, self.prefix, self.bin_path)]
 
     def get_alive_stub_status_url(self):
         """

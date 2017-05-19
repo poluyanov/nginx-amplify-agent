@@ -27,6 +27,8 @@ ADD fastcgi_params /etc/nginx/fastcgi_params
 ADD php-fpm.conf /etc/nginx/conf.d/php-fpm.conf
 # overwrite default www.conf for php7.0-fpm
 ADD php-fpm-www.conf /etc/php/7.0/fpm/pool.d/www.conf
+# add alternate version that listens on IPv4
+ADD php-fpm-www-alt.conf /etc/php/7.0/fpm/pool.d/www-alt.conf
 # add test .php file to /var/www/php-fpm root
 ADD test.php /var/www/php-fpm/test.php
 
