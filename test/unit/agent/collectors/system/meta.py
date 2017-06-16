@@ -39,9 +39,15 @@ class SystemMetaCollectorTestCase(BaseTestCase):
         assert_that(meta, not_(has_key('container_type')))
 
     def check_interface(self, interface_info):
-        assert_that(interface_info, contains_inanyorder('mac', 'name', 'ipv4', 'ipv6'))
+        # don't check for ipv6 explicitly since there will not be ipv6
+        # addresses for all test systems.
+        if 'ipv6' in interface_info:
+            assert_that(interface_info, contains_inanyorder('mac', 'name', 'ipv4', 'ipv6'))
+            assert_that(interface_info['ipv6'], contains_inanyorder('prefixlen', 'netmask', 'address'))
+        else:
+            assert_that(interface_info, has_items('mac', 'name', 'ipv4'))
+
         assert_that(interface_info['ipv4'], contains_inanyorder('prefixlen', 'netmask', 'address'))
-        assert_that(interface_info['ipv6'], contains_inanyorder('prefixlen', 'netmask', 'address'))
 
     def test_special_parse_restrictions(self):
         collector = self.get_collector(collect=False)

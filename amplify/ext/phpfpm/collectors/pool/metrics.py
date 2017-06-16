@@ -32,9 +32,10 @@ class PHPFPMPoolMetricsCollector(AbstractMetricsCollector):
         self._current_stamp = None
         self._parent = None
 
-        self.register(
-            self.collect_status_page
-        )
+        if self.status_page is not None:
+            self.register(
+                self.collect_status_page
+            )
 
     def _setup_status_page(self):
         listen = self.object.flisten
@@ -44,6 +45,14 @@ class PHPFPMPoolMetricsCollector(AbstractMetricsCollector):
         elif ':' in listen:
             host, port = listen.split(':')
             return PHPFPMStatus(host=host, port=int(port), url=self.object.status_path)
+        elif listen.isdigit():
+            port = int(listen)
+            return PHPFPMStatus(host='127.0.0.1', port=port, url=self.object.status_path)
+
+        context.log.error(
+            'failed to parse listen for "%s" pool [listen:"%s", file:"%s"]' %
+            (self.object.name, self.object.file, self.object.listen)
+        )
 
     @staticmethod
     def _parse_status_page(status_page):

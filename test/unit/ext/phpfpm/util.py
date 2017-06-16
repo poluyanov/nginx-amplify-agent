@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-from hamcrest import *
+from hamcrest import (
+    assert_that, not_none, equal_to, string_contains_in_order, calling, raises,
+    has_length, not_
+)
+import os
 
 from test.base import disabled_test
 from test.unit.ext.phpfpm.base import PHPFPMTestCase
@@ -13,6 +17,7 @@ from amplify.ext.phpfpm.util.ps import (
 from amplify.ext.phpfpm.util.inet import INET_IPV4
 from amplify.ext.phpfpm.util.fpmstatus import PHPFPMStatus
 from amplify.ext.phpfpm.util.parser import PHPFPMConfig
+from amplify.ext.phpfpm.util.version import VERSION_PARSER
 
 
 __author__ = "Grant Hulegaard"
@@ -126,6 +131,27 @@ class PHPFPMUtilsTestCase(PHPFPMTestCase):
         assert_that(parsed, not_none())
         assert_that(parsed, equal_to('/usr/sbin/php5-fpm'))
 
+    def test_version_parser(self):
+        # get master_pid
+        ps, _ = subp.call(PS_CMD)
+        ps_parsed_lines = [PS_PARSER(line) for line in ps]
+        master_pid, master_ppid, master_command = ps_parsed_lines[0]
+
+        # get bin_path
+        ls, _ = subp.call(LS_CMD % master_pid)
+        bin_path = LS_PARSER(ls[0])
+
+        version, raw_line = VERSION_PARSER(bin_path)
+        assert_that(version, not_none())
+        assert_that(raw_input, not_none)
+
+        # these checks may be too specific...will definitely break on alternate
+        # systems/versions
+        assert_that(version, equal_to('5.5.9-1'))
+        assert_that(raw_line, equal_to(
+            'PHP 5.5.9-1ubuntu4.21 (fpm-fcgi) (built: Feb  9 2017 21:00:52)'
+        ))
+
 
 class PHPFPMStatusTestCase(PHPFPMTestCase):
     """
@@ -202,268 +228,98 @@ class PHPFPMConfigTestCase(PHPFPMTestCase):
             }
         ))
 
-    def test_old_working_file_as_buffer(self):
-        sbuff = """
-[global]
-; Pid file
-; Note: the default prefix is /var
-; Default Value: none
-pid = /var/run/php5-fpm.pid
+    def test_new_format(self):
+        conf = os.getcwd() + '/test/fixtures/phpfpm/new_format/php-fpm.conf'
 
-; Error log file
-; If it's set to "syslog", log is sent to syslogd instead of being written
-; in a local file.
-; Note: the default prefix is /var
-; Default Value: log/php-fpm.log
-error_log = /var/log/php5-fpm.log
-
-; syslog_facility is used to specify what type of program is logging the
-; message. This lets syslogd specify that messages from different facilities
-; will be handled differently.
-; See syslog(3) for possible values (ex daemon equiv LOG_DAEMON)
-; Default Value: daemon
-;syslog.facility = daemon
-
-; syslog_ident is prepended to every message. If you have multiple FPM
-; instances running on the same server, you can change the default value
-; which must suit common needs.
-; Default Value: php-fpm
-;syslog.ident = php-fpm
-
-; Log level
-; Possible Values: alert, error, warning, notice, debug
-; Default Value: notice
-;log_level = notice
-
-; If this number of child processes exit with SIGSEGV or SIGBUS within the time
-; interval set by emergency_restart_interval then FPM will restart. A value
-; of '0' means 'Off'.
-; Default Value: 0
-;emergency_restart_threshold = 0
-
-; Interval of time used by emergency_restart_interval to determine when
-; a graceful restart will be initiated.  This can be useful to work around
-; accidental corruptions in an accelerator's shared memory.
-; Available Units: s(econds), m(inutes), h(ours), or d(ays)
-; Default Unit: seconds
-; Default Value: 0
-;emergency_restart_interval = 0
-
-; Time limit for child processes to wait for a reaction on signals from master.
-; Available units: s(econds), m(inutes), h(ours), or d(ays)
-; Default Unit: seconds
-; Default Value: 0
-;process_control_timeout = 0
-
-; The maximum number of processes FPM will fork. This has been design to control
-; the global number of processes when using dynamic PM within a lot of pools.
-; Use it with caution.
-; Note: A value of 0 indicates no limit
-; Default Value: 0
-; process.max = 128
-
-; Specify the nice(2) priority to apply to the master process (only if set)
-; The value can vary from -19 (highest priority) to 20 (lower priority)
-; Note: - It will only work if the FPM master process is launched as root
-;       - The pool process will inherit the master process priority
-;         unless it specified otherwise
-; Default Value: no set
-; process.priority = -19
-
-; Send FPM to background. Set to 'no' to keep FPM in foreground for debugging.
-; Default Value: yes
-;daemonize = yes
-
-; Set open file descriptor rlimit for the master process.
-; Default Value: system defined value
-;rlimit_files = 1024
-
-; Set max core size rlimit for the master process.
-; Possible Values: 'unlimited' or an integer greater or equal to 0
-; Default Value: system defined value
-;rlimit_core = 0
-
-; Specify the event mechanism FPM will use. The following is available:
-; - select     (any POSIX os)
-; - poll       (any POSIX os)
-; - epoll      (linux >= 2.5.44)
-; - kqueue     (FreeBSD >= 4.1, OpenBSD >= 2.9, NetBSD >= 2.0)
-; - /dev/poll  (Solaris >= 7)
-; - port       (Solaris >= 10)
-; Default Value: not set (auto detection)
-;events.mechanism = epoll
-
-; When FPM is build with systemd integration, specify the interval,
-; in second, between health report notification to systemd.
-; Set to 0 to disable.
-; Available Units: s(econds), m(inutes), h(ours)
-; Default Unit: seconds
-; Default value: 10
-;systemd_interval = 10
-
-;;;;;;;;;;;;;;;;;;;;
-; Pool Definitions ;
-;;;;;;;;;;;;;;;;;;;;
-
-; Multiple pools of child processes may be started with different listening
-; ports and different management options.  The name of the pool will be
-; used in logs and stats. There is no limitation on the number of pools which
-; FPM can handle. Your system will tell you anyway :)
-
-; To configure the pools it is recommended to have one .conf file per
-; pool in the following directory:
-include=/etc/php5/fpm/pool.d/*.conf
-
-        """
-
-        config = PHPFPMConfig()
+        config = PHPFPMConfig(path=conf)
         assert_that(config, not_none())
-
-        config.readb(sbuff)
         assert_that(config.parsed, equal_to(
             {
                 'pools': [
                     {
                         'status_path': '/status',
                         'name': 'www',
-                        'file': '/etc/php5/fpm/pool.d/www.conf',
-                        'listen': '/run/php/php7.0-fpm.sock'
+                        'file': '/amplify/test/fixtures/phpfpm/new_format/'
+                                'php-fpm-7.0.d/www.conf',
+                        'listen': '127.0.0.1:9000'
                     }
                 ],
-                'include': ['/etc/php5/fpm/pool.d/*.conf'],
-                'file': None
+                'include': ['php-fpm-7.0.d/*.conf'],
+                'file': '/amplify/test/fixtures/phpfpm/new_format/php-fpm.conf'
             }
         ))
 
-    def test_new_broken_file(self):
-        sbuff = """
-; To configure the pools it is recommended to have one .conf file per
-; pool in the following directory:
-include=/etc/php5/fpm/pool.d/*.conf
+    def test_new_format_multi_pool(self):
+        conf = os.getcwd() + '/test/fixtures/phpfpm/new_format_multi_pool/' \
+                             'php-fpm.conf'
 
-[global]
-; Pid file
-; Note: the default prefix is /var
-; Default Value: none
-pid = /var/run/php5-fpm.pid
-
-; Error log file
-; If it's set to "syslog", log is sent to syslogd instead of being written
-; in a local file.
-; Note: the default prefix is /var
-; Default Value: log/php-fpm.log
-error_log = /var/log/php5-fpm.log
-
-; syslog_facility is used to specify what type of program is logging the
-; message. This lets syslogd specify that messages from different facilities
-; will be handled differently.
-; See syslog(3) for possible values (ex daemon equiv LOG_DAEMON)
-; Default Value: daemon
-;syslog.facility = daemon
-
-; syslog_ident is prepended to every message. If you have multiple FPM
-; instances running on the same server, you can change the default value
-; which must suit common needs.
-; Default Value: php-fpm
-;syslog.ident = php-fpm
-
-; Log level
-; Possible Values: alert, error, warning, notice, debug
-; Default Value: notice
-;log_level = notice
-
-; If this number of child processes exit with SIGSEGV or SIGBUS within the time
-; interval set by emergency_restart_interval then FPM will restart. A value
-; of '0' means 'Off'.
-; Default Value: 0
-;emergency_restart_threshold = 0
-
-; Interval of time used by emergency_restart_interval to determine when
-; a graceful restart will be initiated.  This can be useful to work around
-; accidental corruptions in an accelerator's shared memory.
-; Available Units: s(econds), m(inutes), h(ours), or d(ays)
-; Default Unit: seconds
-; Default Value: 0
-;emergency_restart_interval = 0
-
-; Time limit for child processes to wait for a reaction on signals from master.
-; Available units: s(econds), m(inutes), h(ours), or d(ays)
-; Default Unit: seconds
-; Default Value: 0
-;process_control_timeout = 0
-
-; The maximum number of processes FPM will fork. This has been design to control
-; the global number of processes when using dynamic PM within a lot of pools.
-; Use it with caution.
-; Note: A value of 0 indicates no limit
-; Default Value: 0
-; process.max = 128
-
-; Specify the nice(2) priority to apply to the master process (only if set)
-; The value can vary from -19 (highest priority) to 20 (lower priority)
-; Note: - It will only work if the FPM master process is launched as root
-;       - The pool process will inherit the master process priority
-;         unless it specified otherwise
-; Default Value: no set
-; process.priority = -19
-
-; Send FPM to background. Set to 'no' to keep FPM in foreground for debugging.
-; Default Value: yes
-;daemonize = yes
-
-; Set open file descriptor rlimit for the master process.
-; Default Value: system defined value
-;rlimit_files = 1024
-
-; Set max core size rlimit for the master process.
-; Possible Values: 'unlimited' or an integer greater or equal to 0
-; Default Value: system defined value
-;rlimit_core = 0
-
-; Specify the event mechanism FPM will use. The following is available:
-; - select     (any POSIX os)
-; - poll       (any POSIX os)
-; - epoll      (linux >= 2.5.44)
-; - kqueue     (FreeBSD >= 4.1, OpenBSD >= 2.9, NetBSD >= 2.0)
-; - /dev/poll  (Solaris >= 7)
-; - port       (Solaris >= 10)
-; Default Value: not set (auto detection)
-;events.mechanism = epoll
-
-; When FPM is build with systemd integration, specify the interval,
-; in second, between health report notification to systemd.
-; Set to 0 to disable.
-; Available Units: s(econds), m(inutes), h(ours)
-; Default Unit: seconds
-; Default value: 10
-;systemd_interval = 10
-
-;;;;;;;;;;;;;;;;;;;;
-; Pool Definitions ;
-;;;;;;;;;;;;;;;;;;;;
-
-; Multiple pools of child processes may be started with different listening
-; ports and different management options.  The name of the pool will be
-; used in logs and stats. There is no limitation on the number of pools which
-; FPM can handle. Your system will tell you anyway :)
-
-        """
-
-        config = PHPFPMConfig()
+        config = PHPFPMConfig(path=conf)
         assert_that(config, not_none())
-
-        config.readb(sbuff)
         assert_that(config.parsed, equal_to(
             {
                 'pools': [
                     {
-                        'status_path': '/status',
+                        'status_path': '/php_status',
                         'name': 'www',
-                        'file': '/etc/php5/fpm/pool.d/www.conf',
-                        'listen': '/run/php/php7.0-fpm.sock'
+                        'file': '/amplify/test/fixtures/phpfpm/new_format_'
+                                'multi_pool/php-fpm.d/www.conf',
+                        'listen': '9000'
+                    },
+                    {
+                        'status_path': '/php_status',
+                        'name': 'www-socket',
+                        'file': '/amplify/test/fixtures/phpfpm/new_format_'
+                                'multi_pool/php-fpm.d/www-socket.conf',
+                        'listen': '/var/run/php5-fpm.sock'
                     }
                 ],
-                'include': ['/etc/php5/fpm/pool.d/*.conf'],
-                'file': None
+                'include': ['php-fpm.d/*.conf'],
+                'file': '/amplify/test/fixtures/phpfpm/new_format_multi_pool'
+                        '/php-fpm.conf'
+            }
+        ))
+
+    def test_new_format_no_include(self):
+        conf = os.getcwd() + '/test/fixtures/phpfpm/new_format_no_include/' \
+                             'php-fpm.conf'
+
+        config = PHPFPMConfig(path=conf)
+        assert_that(config, not_none())
+        assert_that(config.parsed, equal_to(
+            {
+                'pools': [],
+                'include': [],
+                'file': '/amplify/test/fixtures/phpfpm/new_format_no_include'
+                        '/php-fpm.conf'
+            }
+        ))
+
+    def test_new_format_no_values(self):
+        conf = os.getcwd() + '/test/fixtures/phpfpm/new_format_no_values' \
+                             '/php-fpm.conf'
+
+        config = PHPFPMConfig(path=conf)
+        assert_that(config, not_none())
+        assert_that(config.parsed, equal_to(
+            {
+                'pools': [
+                    {
+                        'status_path': None,
+                        'name': 'www',
+                        'file': '/amplify/test/fixtures/phpfpm/new_format_'
+                                'no_values/php-fpm.d/www.conf',
+                        'listen': '9000'
+                    },
+                    {
+                        'status_path': '/php_status',
+                        'name': 'www-socket',
+                        'file': '/amplify/test/fixtures/phpfpm/new_format_'
+                                'no_values/php-fpm.d/www-socket.conf',
+                        'listen': None
+                    }
+                ],
+                'include': ['php-fpm.d/*.conf'],
+                'file': '/amplify/test/fixtures/phpfpm/new_format_no_values'
+                        '/php-fpm.conf'
             }
         ))

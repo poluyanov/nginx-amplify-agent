@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from hamcrest import *
+from hamcrest import (
+    assert_that, equal_to, not_none, has_length
+)
 
 from test.base import BaseTestCase
 
@@ -30,8 +32,8 @@ class PHPFPMObjectTestCase(BaseTestCase):
             conf_path='/etc/php5/fpm/php-fpm.conf',
             workers=[3, 4]
         )
-
         assert_that(phpfpm_obj, not_none())
+
         assert_that(phpfpm_obj.local_id_args, equal_to(
             ('php-fpm: master process (/etc/php5/fpm/php-fpm.conf)', '/etc/php5/fpm/php-fpm.conf')
         ))
@@ -70,4 +72,38 @@ class PHPFPMObjectTestCase(BaseTestCase):
                 'include': ['/etc/php5/fpm/pool.d/*.conf'],
                 'file': '/etc/php5/fpm/php-fpm.conf'
             }
+        ))
+
+    def test_properties(self):
+        """
+        This test is meant to test some properties that have had intermittent
+        user bug reports.
+        """
+        phpfpm_obj = PHPFPMObject(
+            pid=2,
+            cmd='php-fpm: master process (/etc/php5/fpm/php-fpm.conf)',
+            conf_path='/etc/php5/fpm/php-fpm.conf',
+            workers=[3, 4]
+        )
+        assert_that(phpfpm_obj, not_none())
+
+        assert_that(phpfpm_obj.local_id_args, equal_to(
+            (
+                'php-fpm: master process (/etc/php5/fpm/php-fpm.conf)',
+                '/etc/php5/fpm/php-fpm.conf'
+            )
+        ))
+        assert_that(phpfpm_obj.local_id, equal_to(
+            'e5942daaa5bf35af722bac3b9582b17c07515f0f77936fb5c7f771c7736cc157'
+        ))
+        assert_that(phpfpm_obj.definition, equal_to(
+            {
+                'local_id': 'e5942daaa5bf35af722bac3b9582b17c07515f0f77936fb5c'
+                            '7f771c7736cc157',
+                'type': 'phpfpm',
+                'root_uuid': None
+            }  # root_uuid is None because there is no root obj
+        ))
+        assert_that(phpfpm_obj.definition_hash, equal_to(
+            'c2e304622d5d31cac924f6eb97564fc30605df72a9ccdbfafe2dfbb69057f08e'
         ))

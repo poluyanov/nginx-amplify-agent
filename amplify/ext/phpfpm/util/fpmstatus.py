@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from amplify.agent.common.context import context
+from amplify.agent.common.util.timeout import TimeoutException
 
 from amplify.ext.phpfpm.util.inet import INET_IPV4
 from amplify.ext.phpfpm.util.fcgi import FCGIApp
@@ -8,8 +9,9 @@ from amplify.ext.phpfpm.util.fcgi import FCGIApp
 __author__ = "Grant Hulegaard"
 __copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = [
-    "Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard",
-    "Arie van Luttikhuizen", "Jason Thigpen"
+    "Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov",
+    "Andrew Alexeev", "Grant Hulegaard", "Arie van Luttikhuizen",
+    "Jason Thigpen"
 ]
 __license__ = ""
 __maintainer__ = "Grant Hulegaard"
@@ -18,8 +20,8 @@ __email__ = "grant.hulegaard@nginx.com"
 
 class PHPFPMStatus(object):
     """
-    Query wrapper around FCGIApp.  Responsible for properly initializing and calling FCGIApp with exception
-    handling.
+    Query wrapper around FCGIApp.  Responsible for properly initializing and
+    calling FCGIApp with exception handling.
     """
     def __init__(self, path=None, host=None, port=None, url=None):
         self._path = path
@@ -82,12 +84,14 @@ class PHPFPMStatus(object):
 
     def _connect(self):
         """
-        Initialize an FCGIApp wrapper from flup.  Since FCGIApp doesn't open a socket until call, we don't need
-        try-except handling.
+        Initialize an FCGIApp wrapper from flup.  Since FCGIApp doesn't open a
+        socket until call, we don't need try-except handling.
         """
-        # TODO: Should we cache this FCGIApp object?  Only init once instead of per call?
+        # TODO: Should we cache this FCGIApp object?  Only init once instead of
+        #       per call?
         if self.connection is not None:
-            # if _connect is a string, assume it is a string path for a Unix File sock
+            # if _connect is a string, assume it is a string path for a Unix
+            # File sock
             if isinstance(self.connection, basestring):
                 fcgi = FCGIApp(connect=self.connection)
             elif isinstance(self.connection, INET_IPV4):
@@ -121,6 +125,10 @@ class PHPFPMStatus(object):
         try:
             fcgi = self._connect()
             resp = fcgi(self.env, lambda x, y: None)
+        except TimeoutException:
+            context.log.error('pool communication at "%s" timed out' % self.connection)
+            context.log.debug('additional info:', exc_info=True)
+            resp = ('500', [], '', '')
         except:
             context.log.error('failed to communicate with pool at "%s"' % self.connection)
             context.log.debug('additional info:', exc_info=True)

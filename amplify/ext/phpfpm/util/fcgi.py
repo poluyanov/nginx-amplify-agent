@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-# Some elements of this module use the flup library and are based off of some modifications by Vladimir Rusinov (code
-# referenced at https://gist.github.com/wofeiwo/3720207).  The copyright notice(s) thereof are included below.
+# Some elements of this module use the flup library and are based off of some
+# modifications by Vladimir Rusinov (code referenced at
+# https://gist.github.com/wofeiwo/3720207).  The copyright notice(s) thereof
+# are included below.
 #
 # Copyright (c) 2006 Allan Saddi <allan@saddi.com>
 # Copyright (c) 2011 Vladimir Rusinov <vladimir@greenmice.info>
@@ -30,18 +32,23 @@
 # SUCH DAMAGE.
 #
 #
+import socket
+
 from flup.client.fcgi_app import FCGIApp as FCGIApp_orig
 from flup.client.fcgi_app import (
-    Record, FCGI_BEGIN_REQUEST, struct, FCGI_BeginRequestBody, FCGI_RESPONDER, FCGI_BeginRequestBody_LEN, FCGI_STDIN,
-    FCGI_DATA, FCGI_STDOUT, FCGI_STDERR, FCGI_END_REQUEST
+    Record, FCGI_BEGIN_REQUEST, struct, FCGI_BeginRequestBody, FCGI_RESPONDER,
+    FCGI_BeginRequestBody_LEN, FCGI_STDIN, FCGI_DATA, FCGI_STDOUT, FCGI_STDERR,
+    FCGI_END_REQUEST
 )
+
+from amplify.agent.common.util.timeout import timeout
 
 
 __author__ = "Grant Hulegaard"
 __copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = [
-    "Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard",
-    "Arie van Luttikhuizen", "Jason Thigpen"
+    "Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov",
+    "Andrew Alexeev", "Grant Hulegaard", "Arie van Luttikhuizen"
 ]
 __license__ = ""
 __maintainer__ = "Grant Hulegaard"
@@ -50,11 +57,15 @@ __email__ = "grant.hulegaard@nginx.com"
 
 class FCGIApp(FCGIApp_orig):
     """
-    Slightly customized FCGIApp in order to facilitate one of calls through FCGI sockets.  Remove/simplify some of the
-    flup feature set surrounding app serving to create a usable FCGI client.
+    Slightly customized FCGIApp in order to facilitate one of calls through
+    FCGI sockets.  Remove/simplify some of the flup feature set surrounding app
+    serving to create a usable FCGI client.
     """
 
-    _environPrefixes = ['SERVER_', 'HTTP_', 'REQUEST_', 'REMOTE_', 'PATH_', 'CONTENT_', 'DOCUMENT_', 'SCRIPT_']
+    _environPrefixes = [
+        'SERVER_', 'HTTP_', 'REQUEST_', 'REMOTE_', 'PATH_', 'CONTENT_',
+        'DOCUMENT_', 'SCRIPT_'
+    ]
 
     def __init__(self, connect=None, host=None, port=None, filterEnviron=True):
         if host is not None:
@@ -64,6 +75,7 @@ class FCGIApp(FCGIApp_orig):
         self._connect = connect
         self._filterEnviron = filterEnviron
 
+    @timeout(60)
     def __call__(self, environ, start_response):
         # For sanity's sake, we don't care about FCGI_MPXS_CONN
         # (connection multiplexing). For every request, we obtain a new
@@ -175,3 +187,28 @@ class FCGIApp(FCGIApp_orig):
         # start_response(status, headers)
         # return [result]
         return status, headers, result, err
+
+    def _getConnection(self):
+        if self._connect is not None:
+            # The simple case. Create a socket and connect to the
+            # application.
+            if type(self._connect) is str:
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            else:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+            # Set sock to non-blocking
+            sock.setblocking(0)
+            # We aren't setting timeout here because doing so at the socket
+            # level means ALL socket operations will be subject to the timeout
+            # individually.  We want to timeout the overall call/query of FCGI
+            # so this is not optimal.
+
+            sock.connect(self._connect)
+
+            return sock
+
+        # To be done when I have more time...
+        raise NotImplementedError(
+            'Launching and managing FastCGI programs not yet implemented'
+        )

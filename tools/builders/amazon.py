@@ -15,7 +15,7 @@ __email__ = "dedm@nginx.com"
 def build():
     full_name = "nginx-amplify-agent"
     rpm_sources = os.path.expanduser('~') + '/rpmbuild/SOURCES'
-    python = '/usr/bin/python2.6'
+    python = '/usr/bin/python2.7'
 
     # get version and build
     version, bld = get_version_and_build()
@@ -53,7 +53,7 @@ def build():
 
         # provide a new one - to create a package that will work with the strange amazon linux rpm
         shell_call("echo '[install]' > setup.cfg")
-        shell_call("echo 'install_lib = /usr/lib/python2.6/dist-packages' >> setup.cfg")
+        shell_call("echo 'install_lib = /usr/lib/python2.7/dist-packages' >> setup.cfg")
 
         # create python package
         shell_call('%s setup.py sdist --formats=gztar' % python)

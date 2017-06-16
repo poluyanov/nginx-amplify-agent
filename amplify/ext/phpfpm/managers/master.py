@@ -18,8 +18,9 @@ from amplify.ext.phpfpm import AMPLIFY_EXT_KEY
 __author__ = "Grant Hulegaard"
 __copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = [
-    "Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard",
-    "Arie van Luttikhuizen", "Jason Thigpen"
+    "Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov",
+    "Andrew Alexeev", "Grant Hulegaard", "Arie van Luttikhuizen",
+    "Jason Thigpen"
 ]
 __license__ = ""
 __maintainer__ = "Grant Hulegaard"
@@ -38,7 +39,10 @@ class PHPFPMManager(ObjectManager):
 
     def _discover_objects(self):
         # save the current ids
-        existing_hashes = [obj.definition_hash for obj in self.objects.find_all(types=self.types)]
+        existing_hashes = [
+            obj.definition_hash
+            for obj in self.objects.find_all(types=self.types)
+        ]
 
         phpfpm_masters = self._find_all()
 
@@ -46,8 +50,13 @@ class PHPFPMManager(ObjectManager):
         while len(phpfpm_masters):
             try:
                 data = phpfpm_masters.pop()
-                root_uuid = context.objects.root_object.uuid if context.objects.root_object else None
-                definition = {'type': 'phpfpm', 'local_id': data['local_id'], 'root_uuid': root_uuid}
+                root_uuid = context.objects.root_object.uuid \
+                    if context.objects.root_object else None
+                definition = {
+                    'type': 'phpfpm',
+                    'local_id': data['local_id'],
+                    'root_uuid': root_uuid
+                }
                 definition_hash = PHPFPMObject.hash(definition)
                 discovered_hashes.append(definition_hash)
 
@@ -58,10 +67,13 @@ class PHPFPMManager(ObjectManager):
                     # Send discover event.
                     new_obj.eventd.event(
                         level=INFO,
-                        message='php-fpm master process found, pid %s' % new_obj.pid
+                        message='php-fpm master process found, pid %s' %
+                                new_obj.pid
                     )
 
-                    self.objects.register(new_obj, parent_id=self.objects.root_id)
+                    self.objects.register(
+                        new_obj, parent_id=self.objects.root_id
+                    )
                 elif definition_hash in existing_hashes:
                     for obj in self.objects.find_all(types=self.types):
                         if obj.definition_hash == definition_hash:
@@ -80,10 +92,11 @@ class PHPFPMManager(ObjectManager):
                         # send php-fpm restart event
                         new_obj.eventd.event(
                             level=INFO,
-                            message='php-fpm master process was restarted, new pid %s, old pid %s' % (
-                                new_obj.pid,
-                                current_obj.pid
-                            )
+                            message='php-fpm master process was restarted, new'
+                                    ' pid %s, old pid %s' % (
+                                        new_obj.pid,
+                                        current_obj.pid
+                                    )
                         )
 
                         # stop and unregister children
@@ -95,15 +108,27 @@ class PHPFPMManager(ObjectManager):
                             child_obj.stop()
                             self.objects.unregister(obj=child_obj)
 
-                        self.objects.unregister(current_obj)  # unregister old object
-                        current_obj.stop()  # stop old object
+                        # unregister old object
+                        self.objects.unregister(current_obj)
 
-                        self.objects.register(new_obj, parent_id=self.objects.root_id)
+                        # stop old object
+                        current_obj.stop()
+
+                        self.objects.register(
+                            new_obj, parent_id=self.objects.root_id
+                        )
             except psutil.NoSuchProcess:
-                context.log.debug('phpfpm is restarting/reloading, pids are changing, agent is waiting')
+                context.log.debug(
+                    'phpfpm is restarting/reloading, pids are changing, agent '
+                    'is waiting'
+                )
 
-        # check if we left something in objects (phpfpm could be stopped or something)
-        dropped_hashes = filter(lambda x: x not in discovered_hashes, existing_hashes)
+        # check if we left something in objects (phpfpm could be stopped or
+        # something)
+        dropped_hashes = filter(
+            lambda x: x not in discovered_hashes,
+            existing_hashes
+        )
         if len(dropped_hashes):
             for dropped_hash in dropped_hashes:
                 for obj in self.objects.find_all(types=self.types):
@@ -111,7 +136,9 @@ class PHPFPMManager(ObjectManager):
                         dropped_obj = obj
                         break
 
-            context.log.debug('phpfpm was stopped (pid was %s)' % dropped_obj.pid)
+            context.log.debug(
+                'phpfpm was stopped (pid was %s)' % dropped_obj.pid
+            )
 
             for child_obj in self.objects.find_all(
                 obj_id=dropped_obj.id,
@@ -125,23 +152,32 @@ class PHPFPMManager(ObjectManager):
             self.objects.unregister(dropped_obj)
 
     @staticmethod
-    def _find_all():
+    def _find_all(ps=None):
         """
         Tries to find a master process
 
+        :param ps: List of Strings...used for debugging our parsing logic...
+                        should be None most of the time
         :return: List of Dicts phpfpm object definitions
         """
         # get ps info
         try:
-            ps, _ = subp.call(PS_CMD)
+            # set ps output to passed param or call subp
+            ps, _ = (ps, None) if ps is not None else subp.call(PS_CMD)
             context.log.debug('ps php-fpm output: %s' % ps)
         except Exception as e:
             # log error
             exception_name = e.__class__.__name__
-            context.log.debug('failed to find running php-fpm via "%s" due to %s' % (PS_CMD, exception_name))
+            context.log.debug(
+                'failed to find running php-fpm via "%s" due to %s' % (
+                    PS_CMD,
+                    exception_name
+                )
+            )
             context.log.debug('additional info:', exc_info=True)
 
-            # If there is a root_object defined, log an event to send to the cloud.
+            # If there is a root_object defined, log an event to send to the
+            # cloud.
             if context.objects.root_object:
                 context.objects.root_object.eventd.event(
                     level=INFO,
@@ -151,7 +187,6 @@ class PHPFPMManager(ObjectManager):
             # break processing returning a fault-tolerant empty list
             return []
 
-        # return an empty list if there are no master processes
         if not any('master process' in line for line in ps):
             context.log.info('no php-fpm masters found')
 
@@ -159,7 +194,7 @@ class PHPFPMManager(ObjectManager):
             return []
 
         # collect all info about processes
-        masters = defaultdict(lambda: defaultdict(list))
+        masters = {}
         try:
             for line in ps:
                 parsed = PS_PARSER(line)
@@ -173,27 +208,33 @@ class PHPFPMManager(ObjectManager):
                 # match master process
                 if 'master process' in cmd:
 
-                    # if ppid isn't 1, then the master process must have been started with a launcher
+                    # if ppid isn't 1, then the master process must have been
+                    # started with a launcher
                     if ppid != 1:
                         out, err = subp.call('ps o command %d' % ppid)
-                        parent_command = out[1]  # take the second line because the first is a header
+                        # take the second line because the first is a header
+                        parent_command = out[1]
                         context.log.debug(
-                            'launching php-fpm with "%s" is not currently supported' % parent_command
+                            'launching php-fpm with "%s" is not currently '
+                            'supported' % parent_command
                         )
                         continue
 
                     try:
                         conf_path = MASTER_PARSER(cmd)
                     except:
-                        context.log.error('failed to find conf_path for %s' % cmd)
+                        context.log.error(
+                            'failed to find conf_path for %s' % cmd
+                        )
                         context.log.debug('additional info:', exc_info=True)
                     else:
                         # calculate local_id
-                        local_id = hashlib.sha256('%s_%s' % (cmd, conf_path)).hexdigest()
+                        local_id = hashlib.sha256(
+                            '%s_%s' % (cmd, conf_path)
+                        ).hexdigest()
 
                         if pid not in masters:
-                            # Because of the nested default dict all we have to do is initialize the dict value.
-                            masters[pid]
+                            masters[pid] = {'workers': []}
 
                         masters[pid].update({
                             'cmd': cmd.strip(),
@@ -201,63 +242,35 @@ class PHPFPMManager(ObjectManager):
                             'pid': pid,
                             'local_id': local_id
                         })
+
                 # match pool process
                 elif 'pool' in cmd:
-                    masters[ppid]['workers'].append(pid)
-
-            # get the bin path for each master (remember that each worker
-            # process will return the bin_path of the master)
-            for master in masters.itervalues():
-                # if bin_path was found before, skip
-                if 'bin_path' in master:
-                    continue
-
-                all_pids = [master['pid']] + master['workers']
-                last_exception = None
-                ls_cmd = LS_CMD % master['pid']
-
-                for pid in all_pids:
-                    ls_cmd = LS_CMD % pid
-                    try:
-                        ls, _ = subp.call(ls_cmd)
-                        context.log.debug('ls "%s" output: %s' % (ls_cmd, ls))
-                    except Exception as e:
-                        last_exception = e
+                    if ppid in masters:
+                        masters[ppid]['workers'].append(pid)
                     else:
-                        bin_path = LS_PARSER(ls[0])
+                        masters[ppid] = dict(workers=[pid])
 
-                        masters[master['pid']].update({
-                            'bin_path': bin_path
-                        })
-
-                        last_exception = None  # clear last exception
-                        break  # once we find one successful bin_path break
-
-                # if no ls was successful...
-                if last_exception:
-                    # ...log error
-                    exception_name = last_exception.__class__.__name__
-                    context.log.error(
-                        'failed to find php-fpm bin path, last attempt: '
-                        '"%s" failed due to %s' %
-                        (ls_cmd, exception_name)
-                    )
-                    context.log.debug('additional info:', exc_info=True)
-
-                    # If there is a root_object defined, log an event to send to the cloud.
-                    if context.objects.root_object:
-                        context.objects.root_object.eventd.event(
-                            level=INFO,
-                            message='php-fpm bin not found'
-                        )
         except Exception as e:
             # log error
             exception_name = e.__class__.__name__
-            context.log.error('failed to parse ps results due to %s' % exception_name)
+            context.log.error(
+                'failed to parse ps results due to %s' % exception_name
+            )
             context.log.debug('additional info:', exc_info=True)
 
         # format results
         results = []
         for payload in masters.itervalues():
-            results.append(payload)
+            # only add payloads that have all the keys
+            if 'cmd' in payload and \
+                    'conf_path' in payload and \
+                    'pid' in payload and \
+                    'local_id' in payload and \
+                    'workers' in payload:
+                results.append(payload)
+            else:
+                context.log.debug(
+                    'phpfpm master "_find_all()" found an incomplete entity %s'
+                    % payload
+                )
         return results

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import glob
-import copy
+import os
+from collections import defaultdict
 from io import BytesIO
 from ConfigParser import ConfigParser
 
@@ -22,20 +23,26 @@ __email__ = "grant.hulegaard@nginx.com"
 
 class PHPFPMConfig(object):
     """
-    An in memory representation of a PHPFPM config file.  Provides a convenient
-    object for handling of parsing and representation of a PHPFPM config.
+    An in memory representation of a PHPFPM config file.  Older versions used
+    ConfigParser objects but our experience has shown that this is prone to
+    errors since PHPFPM configs are technically INI files rather than YAML.than
 
-    Consider usage similar to ConfigParser.ConfigParser().
+    This parser will do the "simple" thing and traverse files looking for key
+    indicators and directives constructing a very limited representation of
+    a PHPFPM configuraiton.
     """
     def __init__(self, path=None):
         """
         :param path: String Optional config path.  If provided parsing will be
-                     done during init process.
+                            done during the init process.
         """
-        self.path = path  # path to phpfpm file
-        self._results = {
+        self.path = path
+        self.folder = os.path.dirname(self.path)
+        # raw dict structure to save contextual info
+        self._structure = defaultdict(lambda: defaultdict(list))
+        self._parsed = {
             'file': self.path,
-            'include': [],
+            'include': set(),
             'pools': []
         }  # parsed result dict
 
@@ -43,118 +50,140 @@ class PHPFPMConfig(object):
             self.read(self.path)
 
     @property
+    def structure(self):
+        return self._structure
+
+    @property
     def parsed(self):
-        return self._results
+        return self._parsed
 
-    def get(self, *args):
-        def _recursive_dict_lookup(_itm=None, *args):
+    def read(self, root):
+        """
+        Read the PHPConfig and populate self._structure.  Follows includes.
+
+        :param root: String Path to root config/entry point
+        """
+        parsed_files = []
+
+        # parse the root file
+        self._parse_file(root)
+        parsed_files.append(root)
+
+        # since included files can also have include directives, loop until we
+        # parse each incrementally found include
+        included_files = set()
+        while included_files != self._find_includes():
+            included_files = self._find_includes()
+
+            for path in included_files:
+                # avoid expensive re-parsing
+                if path not in parsed_files:
+                    self._parse_file(path)
+                    parsed_files.append(path)
+
+        # for readability/backwards compatability/json convert set() to list
+        self._parsed['include'] = list(self._parsed['include'])
+
+        # finally parse the now complete structure representation of the files
+        self._parse_structure()
+
+    def _parse_file(self, path):
+        """
+        Takes a file path, opens a file, and parses over it.  We do not concern
+        ourselves with managing the flie lifecycle here.
+        """
+        context = 'global'  # default context is global at start of every file
+
+        def _get_value(line):
             """
-            Takes an unbounded list of keys and traverses a dict in a nested
-            fashion to return the ending value map from the key chain.
-
-            ex::
-                PHPFPMConfig.get('global', 'includes')
-                returns dict.get('global').get('includes')
+            Take an INI line and parse the value out of it, removing spaces.
             """
-            # if _itm is None set it to top results
-            if _itm is None:
-                _itm = copy.deepcopy(self._results)
+            return line.split('=', 1)[-1].strip()
 
-            _itm = _itm.get(args[0])
+        with open(path, 'r') as conf_file:
+            for line in conf_file:
+                # strip spaces
+                line = line.strip()
 
-            if len(args[1:]) > 0:
-                _itm = _recursive_dict_lookup(*args[1:], _itm=_itm)
+                if line.startswith('['):
+                    # found a new context
+                    context = line.replace('[', '').replace(']', '').strip()
+                    self._structure[context]['file'] = path
+                elif line.startswith('include'):
+                    # found an include
+                    self._structure[context]['include'].append(
+                        _get_value(line)
+                    )
+                elif line.startswith('listen') and 'listen.' not in line:
+                    self._structure[context]['listen'].append(
+                        _get_value(line)
+                    )
+                elif line.startswith('pm.status_path'):
+                    self._structure[context]['pm.status_path'].append(
+                        _get_value(line)
+                    )
 
-            return _itm
+    def _find_includes(self):
+        """
+        Build a list of inculded files from a list of directive rules.
+        """
+        includes = set()  # avoid circular imports with set()
 
-        return self._recursive_dict_lookup(*args)
+        for context, entity in self._structure.iteritems():
+            # NOTE: By iterating over all items (including the 'global' key
+            # word) we effectively obey all includes equally regardless of
+            # location.
+            for include_rule in entity.get('include', []):
+                # add the rule to the parse result includes
+                self._parsed['include'].add(include_rule)
 
-    def _parse(self, sfile):
-        pos = 0
-        for line in sfile:
-            if line.startswith('['):
-                # found the first named block
-                break
-            elif line.startswith('include'):
-                include_rule = line.split('=', 1)[-1].strip()
-                self._results['include'].append(include_rule)
+                # resolve local paths
+                relative_rule = self._resolve_local_path(include_rule)
 
-            pos += 1
+                if '*' in relative_rule:
+                    # if it is a unix-expansion, find mathcing files
+                    for filepath in glob.glob(relative_rule):
+                        includes.add(filepath)
+                else:
+                    # perhaps it is already a file path
+                    includes.add(relative_rule)
 
-        # create a concatenated string buffer for building a trimeed file obj
-        concat_str = '\n'.join(sfile[pos:])
+        return includes
 
-        # parse root config
-        try:
-            root_config = ConfigParser()
-            # readfp for readlines interface for reading in memory buffer
-            root_config.readfp(BytesIO(concat_str), self.path)
+    def _resolve_local_path(self, path):
+        """
+        Resolves local path
+        :param path: str path
+        :return: absolute path
+        """
+        result = path.replace('"', '')
+        if not result.startswith('/'):
+            result = '%s/%s' % (self.folder, result)
+        return result
 
-            self._results['include'].append(
-                root_config.get('global', 'include')
+    def _parse_structure(self):
+        """
+        Once a read has completed and we have a final structure, we should now
+        parse IT and retrieve/organize the "bare minimum" information we need
+        to set up collectors and such.
+
+        At the moment, this just means parsing out pool information.
+        """
+        pool_names = filter(lambda x: x != 'global', self._structure.keys())
+
+        for pool_name in pool_names:
+            # Get first found value for interesting directives.  If there are
+            # no found directives just set to None
+            listen = self._structure[pool_name]['listen'][0] \
+                if len(self._structure[pool_name]['listen']) else None
+            status_path = self._structure[pool_name]['pm.status_path'][0] \
+                if len(self._structure[pool_name]['pm.status_path']) else None
+
+            pool = dict(
+                name=pool_name,
+                file=self._structure[pool_name]['file'],
+                listen=listen,
+                status_path=status_path
             )
-        except Exception as e:
-            exception_name = e.__class__.__name__
-            context.log.error(
-                'failed to parse php-fpm master config %s due to %s' % (
-                    self.path,
-                    exception_name
-                )
-            )
-            context.log.debug('additional info:', exc_info=True)
 
-        # find included configs (pools)
-        included = []
-        for include_rule in self._results['include']:
-            if '*' in include_rule:
-                for filepath in glob.glob(include_rule):
-                    included.append(filepath)
-
-        # parse included configs (pools)
-        for filepath in included:
-            pool = {
-                'file': filepath,
-                'name': None,
-                'listen': None,
-                'status_path': None
-            }
-            try:
-                pool_config = ConfigParser()
-                pool_config.read(filepath)
-
-                pool_name = pool_config.sections()[0]
-                pool['name'] = pool_name
-
-                listen = pool_config.get(pool_name, 'listen')
-                pool['listen'] = listen
-
-                status_path = pool_config.get(pool_name, 'pm.status_path')
-                pool['status_path'] = status_path
-            except Exception as e:
-                exception_name = e.__class__.__name__
-                context.log.error('failed to parse php-fpm pool config %s due to %s' % (filepath, exception_name))
-                context.log.debug('additional info:', exc_info=True)
-            else:
-                # only add pool if there is no error and if pool is properly
-                self._results['pools'].append(pool)
-
-    def read(self, path):
-        """
-        Open a file, load it into a string buffer and parse it.
-        """
-        with StringFile() as sfile:  # open in memory string file
-
-            # open the config file and write each line into the string file
-            with open(path, 'r') as config:
-                for line in config:
-                    sfile.write(line)
-
-            self._parse(sfile)
-
-    def readb(self, buffer):
-        """
-        Read a string-castable buffer instead of opening a file.  Useful for
-        testing.
-        """
-        with StringFile(str(buffer)) as sfile:
-            self._parse(sfile)
+            self._parsed['pools'].append(pool)

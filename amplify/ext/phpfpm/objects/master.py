@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-import ConfigParser
-import glob
-
-from amplify.agent.common.context import context
 from amplify.ext.abstract.object import AbstractObject
 from amplify.ext.phpfpm.util.parser import PHPFPMConfig
 from amplify.ext.phpfpm.collectors.master.meta import PHPFPMMetaCollector
@@ -28,14 +24,13 @@ class PHPFPMObject(AbstractObject):
         self.name = 'master'
 
         # cached values
-        self._local_id = self.data.get('local_id')
+        self._local_id = self.data.get('local_id', None)
         # TODO: Think of a better way to handle this communication between asbtract and inherited objects.
 
         # attributes
         self.pid = self.data['pid']
         self.cmd = self.data['cmd']
         self.conf_path = self.data['conf_path']
-        self.bin_path = self.data.get('bin_path', None)  # This can be missing
         self.workers = self.data['workers']
 
         # state

@@ -208,7 +208,7 @@ class NginxConfigParser(object):
     )
 
     script = OneOrMore(
-        Group(add_header) |
+        Group(add_header) | Group(server_name) |
         Group(log_format) | Group(perl_set) | Group(lua_content) | Group(alias) | Group(return_) |
         Group(assignment) | Group(set) | Group(rewrite) | Group(sub_filter) |
         map_block | block

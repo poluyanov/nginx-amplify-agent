@@ -54,7 +54,7 @@ class PHPFPMPoolObject(AbstractObject):
     @property
     def flisten(self):
         """
-        This is a helper to take raw "listen" strings from phpfpm configs and attempt to format them into something 
+        This is a helper to take raw "listen" strings from phpfpm configs and attempt to format them into something
         usable.  This is primarily the replacing of "$pool" variable.
         """
         if self._flisten is not None:

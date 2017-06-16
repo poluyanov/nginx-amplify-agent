@@ -21,7 +21,11 @@ License: 2-clause BSD-like license
 Source0:   nginx-amplify-agent-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
+%if 0%{?amzn}
+Requires: python27
+%else
 Requires: python >= 2.6
+%endif
 Requires: initscripts >= 8.36
 Requires(post): chkconfig
 
@@ -145,6 +149,10 @@ fi
 
 
 %changelog
+* Thu Jun 15 2017 Mike Belov <dedm@nginx.com> 0.44-1
+- 0.44-1
+- PHP-FPM bug fixes
+
 * Thu May 18 2017 Mike Belov <dedm@nginx.com> 0.43-1
 - 0.43-1
 - PHP-FPM bug fixes
@@ -155,7 +163,7 @@ fi
 - 0.42-2
 - PHP-FPM bug fixes
 
-* Mon Apr 3 2017 Mike Belov <dedm@nginx.com> 0.42-1
+* Mon Apr  3 2017 Mike Belov <dedm@nginx.com> 0.42-1
 - 0.42-1
 - PHP-FPM support
 - Tags support
@@ -167,16 +175,16 @@ fi
 - Updated requests library (fixes some memory leaks)
 - Fixes for config and nginx -V parsing
 
-* Thu Jan 5 2017 Mike Belov <dedm@nginx.com> 0.41-1
+* Thu Jan  5 2017 Mike Belov <dedm@nginx.com> 0.41-1
 - 0.41-1
 - Generic support for *nix systems
 - Fixes for config parser
 
-* Tue Nov 7 2016 Mike Belov <dedm@nginx.com> 0.40-2
+* Mon Nov  7 2016 Mike Belov <dedm@nginx.com> 0.40-2
 - 0.40-2
 - Bug fixe8
 
-* Tue Nov 1 2016 Mike Belov <dedm@nginx.com> 0.40-1
+* Tue Nov  1 2016 Mike Belov <dedm@nginx.com> 0.40-1
 - 0.40-1
 - Bug fixes
 - Syslog support
@@ -208,7 +216,7 @@ fi
 - 0.36-1
 - Bug fixes
 
-* Thu Jun 29 2016 Mike Belov <dedm@nginx.com> 0.35-1
+* Wed Jun 29 2016 Mike Belov <dedm@nginx.com> 0.35-1
 - 0.35-1
 - New metrics for NGINX+
 - Bug fixes
@@ -222,11 +230,11 @@ fi
 - NGINX+ metrics aggregation support
 - Bug fixes
 
-* Thu May 5 2016 Mike Belov <dedm@nginx.com> 0.33-3
+* Thu May  5 2016 Mike Belov <dedm@nginx.com> 0.33-3
 - 0.33-3
 - Bug fixes
 
-* Thu May 5 2016 Mike Belov <dedm@nginx.com> 0.33-2
+* Thu May  5 2016 Mike Belov <dedm@nginx.com> 0.33-2
 - 0.33-2
 - Bug fixes
 
@@ -259,7 +267,7 @@ fi
 - 0.27-1
 - Bug fixes
 
-* Wed Dec 3 2015 Mike Belov <dedm@nginx.com> 0.25-1
+* Thu Dec  3 2015 Mike Belov <dedm@nginx.com> 0.25-1
 - 0.25-1
 - Bug fixes
 - New metric: system.cpu.stolen
@@ -294,19 +302,19 @@ fi
 - 0.22-2
 - Bug fixes
 
-* Mon Nov 09 2015 Mike Belov <dedm@nginx.com> 0.22-1
+* Mon Nov  9 2015 Mike Belov <dedm@nginx.com> 0.22-1
 - 0.22-1
 - Bug fixes
 
-* Thu Nov 05 2015 Mike Belov <dedm@nginx.com> 0.21-3
+* Thu Nov  5 2015 Mike Belov <dedm@nginx.com> 0.21-3
 - 0.21-3
 - Additional events added
 
-* Wed Nov 04 2015 Mike Belov <dedm@nginx.com> 0.21-2
+* Wed Nov  4 2015 Mike Belov <dedm@nginx.com> 0.21-2
 - 0.21-2
 - Bug fixes
 
-* Mon Nov 02 2015 Mike Belov <dedm@nginx.com> 0.21-1
+* Mon Nov  2 2015 Mike Belov <dedm@nginx.com> 0.21-1
 - 0.21-1
 - Bug fixes
 
