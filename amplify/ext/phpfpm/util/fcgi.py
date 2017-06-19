@@ -194,15 +194,15 @@ class FCGIApp(FCGIApp_orig):
             # application.
             if type(self._connect) is str:
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+
+                # Set sock to non-blocking - only if we're working with unix socket
+                sock.setblocking(0)
+                # We aren't setting timeout here because doing so at the socket
+                # level means ALL socket operations will be subject to the timeout
+                # individually.  We want to timeout the overall call/query of FCGI
+                # so this is not optimal.
             else:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-            # Set sock to non-blocking
-            sock.setblocking(0)
-            # We aren't setting timeout here because doing so at the socket
-            # level means ALL socket operations will be subject to the timeout
-            # individually.  We want to timeout the overall call/query of FCGI
-            # so this is not optimal.
 
             sock.connect(self._connect)
 

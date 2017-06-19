@@ -93,18 +93,26 @@ class PHPFPMStatus(object):
             # if _connect is a string, assume it is a string path for a Unix
             # File sock
             if isinstance(self.connection, basestring):
-                fcgi = FCGIApp(connect=self.connection)
+                fcgi = FCGIApp(
+                    connect=self.connection
+                )
             elif isinstance(self.connection, INET_IPV4):
-                fcgi = FCGIApp(host=self.connection.host, port=self.connection.port)
+                fcgi = FCGIApp(
+                    host=self.connection.host, port=self.connection.port
+                )
             else:
-                fcgi = FCGIApp(connect=self.connection)
-                # this is a hail mary that will bubble a NotImplemented error from FCGIApp if flup can't handle it.
+                fcgi = FCGIApp(
+                    connect=self.connection
+                )
+                # this is a hail mary that will bubble a NotImplemented error
+                # from FCGIApp if flup can't handle it.
 
             return fcgi
 
     def get_status(self):
         """
-        Now with meta information all setup, attempt to communicate over socket and get status page.
+        Now with meta information all setup, attempt to communicate over socket
+        and get status page.
 
         Example return::
             pool:                 www
@@ -126,11 +134,17 @@ class PHPFPMStatus(object):
             fcgi = self._connect()
             resp = fcgi(self.env, lambda x, y: None)
         except TimeoutException:
-            context.log.error('pool communication at "%s" timed out' % self.connection)
+            context.log.error(
+                'pool communication at "%s" timed out' %
+                self.connection.__str__()
+            )  # use .__str__() because of namedtuple
             context.log.debug('additional info:', exc_info=True)
             resp = ('500', [], '', '')
         except:
-            context.log.error('failed to communicate with pool at "%s"' % self.connection)
+            context.log.error(
+                'failed to communicate with pool at "%s"' %
+                self.connection.__str__()
+            )  # use .__str__() because of namedtuple
             context.log.debug('additional info:', exc_info=True)
             resp = ('500', [], '', '')
 
@@ -139,7 +153,9 @@ class PHPFPMStatus(object):
         if status.startswith('200'):
             return out
         else:
-            context.log.error('non-success returned by fcgi (status: %s)' % status)
+            context.log.error(
+                'non-success returned by fcgi (status: %s)' % status
+            )
             context.log.debug(
                 'additional info:\n'
                 '  status: %s\n'
