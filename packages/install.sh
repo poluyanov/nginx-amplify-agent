@@ -352,9 +352,9 @@ get_os_name
 
 # Check for Python
 printf "\033[32m ${step}. Checking Python ...\033[0m"
-command -V python > /dev/null 2>&1 && python_exists='yes' || python_exists='no'
-command -V python2.7 > /dev/null 2>&1 && python_27='yes' || python_27='no'
-command -V python2.6 > /dev/null 2>&1 && python_26='yes' || python_26='no'
+command -V python > /dev/null 2>&1 && python_binary='python' && python_exists='yes' || python_exists='no'
+command -V python2.7 > /dev/null 2>&1 && python_binary='python2.7' && python_exists='yes' && python_27='yes' || python_27='no'
+command -V python2.6 > /dev/null 2>&1 && python_binary='python2.6' && python_exists='yes' && python_26='yes' || python_26='no'
 
 if [ "${python_exists}" = "yes" ]; then
     if [ "${python_27}" = "no" -a "${python_26}" = "no" ]; then
@@ -384,7 +384,7 @@ if [ "${python_exists}" = "no" ]; then
     exit 1
 fi
 
-python_version=`python -c 'import sys; print("{0}.{1}".format(sys.version_info[0], sys.version_info[1]))'`
+python_version=`$python_binary -c 'import sys; print("{0}.{1}".format(sys.version_info[0], sys.version_info[1]))'`
 printf "\033[32m found python $python_version\033[0m\n"
 
 incr_step
