@@ -87,12 +87,12 @@ get_os_name () {
 		# For Red Hat also grab release
 		release=`cat /etc/*-release | grep -i 'red hat.*[0-9]' | \
 			 sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
-		
+
 		if [ -z "$release" ]; then
 		    release=`cat /etc/*-release | grep -i '^VERSION_ID=' | \
 			     sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
 		fi
-		
+
 		os="centos"
 		centos_flavor="red hat linux"
 		;;
@@ -105,7 +105,7 @@ get_os_name () {
 
 		os="amzn"
 		centos_flavor="amazon linux"
-		;;		
+		;;
 	    *)
 		codename=""
 		release=""
@@ -137,7 +137,7 @@ add_public_key_deb() {
     check_downloader && \
     ${downloader} ${downloader_opts} ${public_key_url} | \
     ${sudo_cmd} apt-key add - > /dev/null 2>&1
-    
+
     if [ $? -ne 0 ]; then
 	printf "\033[31m failed.\033[0m\n\n"
 	exit 1
@@ -155,7 +155,7 @@ add_public_key_rpm() {
     else
 	rpm_key_cmd="rpm"
     fi
-    
+
     check_downloader && \
     ${sudo_cmd} rm -f /tmp/nginx_signing.key.$$ && \
     ${downloader} ${downloader_opts} ${public_key_url} | \
@@ -214,7 +214,7 @@ add_repo_rpm () {
 install_deb_or_rpm() {
     # Update repo
     printf "\033[32m ${step}. Updating repository ...\n\n\033[0m"
-    
+
     test -n "$update_cmd" && \
     ${sudo_cmd} ${update_cmd}
 
@@ -395,7 +395,7 @@ printf "\033[32m ${step}. Checking OS compatibility ...\033[0m"
 # Add public key, create repo config, install package
 case "$os" in
     ubuntu|debian)
-	printf "\033[32m ${os} detected.\033[0m\n"		
+	printf "\033[32m ${os} detected.\033[0m\n"
 
 	incr_step
 
@@ -422,7 +422,7 @@ case "$os" in
 
 	# Add public key
 	add_public_key_rpm
-		
+
 	incr_step
 
 	# Add repository configuration
@@ -459,7 +459,7 @@ case "$os" in
 	else
 	    printf "\033[31m failed.\033[0m\n\n"
 	fi
-	
+
 	exit 1
 esac
 
