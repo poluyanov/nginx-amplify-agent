@@ -359,7 +359,7 @@ command -V python2.6 > /dev/null 2>&1 && python_26='yes' || python_26='no'
 if [ "${python_exists}" = "yes" ]; then
     if [ "${python_27}" = "no" -a "${python_26}" = "no" ]; then
 	printf "\033[31m version 2.6 or 2.7 is required, older or newer versions aren't supported.\033[0m\n\n"
-	pyton_exists="no"
+	python_exists="no"
     fi
 else
     printf "\033[31m version 2.6 or 2.7 is required, but could not be found.\033[0m\n\n"
